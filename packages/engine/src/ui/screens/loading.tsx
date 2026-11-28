@@ -5,6 +5,7 @@ import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import "./loading.en.strings.ts";
 import { InputGlyph } from "../controls/input-glyph";
+import { Progress } from "../controls/progress";
 
 export interface LoadingScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
@@ -39,71 +40,51 @@ export interface LoadingScreenProps {
  * game does not wait). A press anywhere asks for the next tip.
  */
 export function LoadingScreen(props: LoadingScreenProps) {
+  const percent = () => (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress) * 100;
   return (
     <View class={`absolute inset-0 text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onNextTip?.(e)}>
       <Show when={props.keyArt}>
         <Art class="absolute object-cover inset-0" kind="tutorial" src={props.keyArt} />
       </Show>
-      <Show when={!props.keyArt}>
-        <View class="absolute inset-0" />
-      </Show>
-      <View class={`absolute bg-linear-to-r from-shade-deep to-transparent to-55% inset-0`} />
-      <View class="absolute top-auto bottom-0 pt-16 pb-[calc(env(hud-inset-bottom)+2rem)] pl-[calc(env(hud-inset-left)+3rem)] pr-[calc(env(hud-inset-right)+3rem)] inset-x-0 gap-5 compact:pt-5 compact:pb-[calc(env(hud-inset-bottom)+1rem)] compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] compact:gap-4 short:pt-4 short:pb-[calc(env(hud-inset-bottom)+1rem)] short:gap-2.5">
-        <View class="absolute -top-30 bottom-0 inset-x-0 bg-linear-to-b from-transparent via-shade-deep via-30% to-shade-deep" />
-        <View class="gap-5 short:flex-row short:items-end short:gap-4 compact:gap-4">
-          <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-9/20 short:grow short:shrink short:basis-0 short:min-w-0">
-            <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-hud-accent-ink gap-2.5 transition duration-base ease-out starting:opacity-0 starting:translate-y-2`}>
-              <View class="w-8 h-0.5 bg-hud-accent shadow-glow-sm" />
-              <Text class="shrink">{t("screen.loading.entering")}</Text>
-            </View>
-            <Text class={`font-display text-7xl compact:text-display-md short:text-3xl font-bold leading-flat text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg m-0 transition duration-base ease-out starting:opacity-0 starting:translate-y-2`}>
-              {props.place}
-            </Text>
+      <View class="absolute inset-x-0 bottom-0 h-3/5 bg-linear-to-t from-bg via-scrim to-transparent portrait:h-3/4" />
+      <View class="absolute inset-x-0 bottom-0 flex-col gap-5 pb-[calc(env(hud-inset-bottom)+2.5rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:gap-4 portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:gap-3 compact:pb-[calc(env(hud-inset-bottom)+1.25rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)]">
+        <View class="flex-row items-end gap-8 portrait:flex-col portrait:items-stretch portrait:gap-4 compact:flex-col compact:items-stretch compact:gap-3">
+          <View class="flex-col gap-1 grow shrink basis-0 min-w-0 transition duration-base ease-out starting:opacity-0 starting:translate-y-2 portrait:basis-auto compact:basis-auto">
+            <Text class={`m-0 ${packClass("Screen", "note")} uppercase tracking-label font-semibold`}>{t("screen.loading.entering")}</Text>
+            <Text class={`m-0 ${packClass("Screen", "heading")} compact:text-display-md`}>{props.place}</Text>
           </View>
-          <View class={`pt-4 pb-4.5 max-w-190 px-5.5 gap-1 compact:py-3 compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-2.5 short:px-4 disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
+          <View class={`flex-col gap-1.5 w-120 max-w-full px-5 py-4 compact:w-full compact:px-4 compact:py-3 transition duration-base ease-out starting:opacity-0 starting:translate-y-2 portrait:w-full ${packClass("Plate", "frame")}`}>
             <View class="flex-row items-center gap-2">
-              <Text class={`tracking-label uppercase text-hud-accent-ink text-xs font-bold py-0.5 px-2 m-0 ${packClass("Chip", "frame")}`}>
-                {t("screen.loading.tip")}
-              </Text>
-              <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-xs font-semibold tracking-label px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
+              <Text class="text-xs font-bold tracking-label uppercase text-fg-muted m-0 grow">{t("screen.loading.tip")}</Text>
+              <View class="flex-row items-center gap-x-1 text-xs font-semibold tracking-label text-fg-muted pointer-coarse:min-h-11" role="button" onPress={(e) => props.onNextTip?.(e)}>
                 <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.nextKey")} size="sm" />
                 <Text>{t("screen.loading.next")}</Text>
               </View>
             </View>
-            <Text class="text-sm tracking-normal text-fg m-0">{props.tip}</Text>
+            <Text class="text-base leading-snug m-0">{props.tip}</Text>
             <View class="text-caption text-fg-muted short:hidden">{props.lore?.()}</View>
           </View>
         </View>
-        <View class="flex-row items-center gap-4.5 compact:items-stretch compact:flex-col-reverse compact:gap-3">
-          <View class={`relative group/bar grow shrink h-3 bg-track shadow-sunk rounded-capsule gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready === true}>
-            <View class={`absolute top-0 left-0 bg-linear-to-r from-hud-accent to-hud-accent h-full rounded-capsule shadow-glow-lg inset-shadow-bar inset-shadow-knob duration-slow group-data-ready/bar:shadow-glow-lg`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
-          </View>
-          <View class="flex-row items-center gap-y-2 gap-x-3 compact:flex-wrap">
-            <Show when={!props.ready}>
-              <Spinner size={22} name={t("screen.loading.busy")} />
-            </Show>
-            <Show when={!props.ready && props.status}>
-              <Text class={`text-xs font-semibold tracking-label uppercase text-fg-muted m-0 shrink`}>
-                {props.status}
-              </Text>
-            </Show>
-            <Show when={!(props.ready && props.waits)}>
-              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg min-w-18 text-display-lg leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-hud-accent-ink compact:ml-auto compact:min-w-0 compact:text-display-sm short:text-title shrink`} data-ready={props.ready === true}>
-                {t("screen.loading.Percent", { progress: `${formatNumber((props.progress) * 100, { decimals: 0 })}%` })}
-              </Text>
-            </Show>
-            <Show when={props.ready && props.waits}>
-              <Button variant="primary" class={`gap-x-2 min-h-11 font-bold px-5.5 compact:grow compact:shrink compact:basis-auto animate-pop`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
-                <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.continueKey")} size="sm" />
-                <Text class="uppercase tracking-label whitespace-normal pointer-coarse:hidden">
-                  {t("screen.loading.continue")}
-                </Text>
-                <Text class="uppercase tracking-label hidden whitespace-normal pointer-coarse:flex">
-                  {t("screen.loading.tapContinue")}
-                </Text>
-              </Button>
-            </Show>
-          </View>
+        <View class="flex-row items-center gap-5 compact:gap-3">
+          <Progress class="grow shrink" value={percent()} label={props.place} />
+          <Show when={!props.ready}>
+            <Spinner size={22} name={t("screen.loading.busy")} />
+          </Show>
+          <Show when={!props.ready && props.status}>
+            <Text class={`m-0 shrink ${packClass("Screen", "note")} uppercase tracking-label font-semibold`}>{props.status}</Text>
+          </Show>
+          <Show when={!(props.ready && props.waits)}>
+            <Text class={`m-0 min-w-18 text-end tabular-nums whitespace-nowrap ${packClass("Screen", "heading")} text-display-sm compact:text-title`}>
+              {t("screen.loading.Percent", { progress: `${formatNumber(percent(), { decimals: 0 })}%` })}
+            </Text>
+          </Show>
+          <Show when={props.ready && props.waits}>
+            <Button variant="primary" class="gap-x-2 animate-pop" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
+              <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.continueKey")} size="sm" />
+              <Text class="pointer-coarse:hidden">{t("screen.loading.continue")}</Text>
+              <Text class="hidden pointer-coarse:flex">{t("screen.loading.tapContinue")}</Text>
+            </Button>
+          </Show>
         </View>
       </View>
     </View>
@@ -112,6 +93,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
 
 export const fixtures: Record<string, Partial<LoadingScreenProps>> = {
   default: {"keyArt":0,"place":"The Sunken Archive","progress":0.62,"ready":false,"tip":"Dodging through an attack at the last moment slows time for a breath.","waits":true},
+  ready: {"keyArt":0,"place":"The Sunken Archive","progress":1,"ready":true,"tip":"Dodging through an attack at the last moment slows time for a breath.","waits":true},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

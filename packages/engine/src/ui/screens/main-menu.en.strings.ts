@@ -9,7 +9,8 @@ export default file.strings({
     "screen.main-menu.newGame": "New game",
     "screen.main-menu.newsEyebrow": "News",
     "screen.main-menu.quit": "Quit",
-    "screen.main-menu.settings": "Settings"
+    "screen.main-menu.settings": "Settings",
+    "screen.main-menu.title": "Main menu"
   },
   "fonts": [],
   "locale": "en"

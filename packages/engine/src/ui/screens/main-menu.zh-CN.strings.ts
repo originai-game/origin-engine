@@ -9,7 +9,8 @@ export default file.strings({
     "screen.main-menu.newGame": "新游戏",
     "screen.main-menu.newsEyebrow": "新闻",
     "screen.main-menu.quit": "退出",
-    "screen.main-menu.settings": "设置"
+    "screen.main-menu.settings": "设置",
+    "screen.main-menu.title": "主菜单"
   },
   "fonts": [],
   "locale": "zh-CN"

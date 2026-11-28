@@ -42,33 +42,33 @@ export function TitleScreen(props: TitleScreenProps) {
       </View>
       <View class="absolute inset-0 bg-linear-to-b from-material-thin via-transparent via-30% to-transparent" />
       <View class="absolute inset-0 bg-linear-to-t from-bg via-scrim via-25% to-transparent to-60%" />
-      <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto] justify-items-center h-full pt-12 pb-8 px-14 compact:pt-8 compact:pb-5 compact:px-5">
+      <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto] justify-items-center h-full pt-12 pb-8 px-14 portrait:px-8 compact:pt-8 compact:pb-5 compact:px-5">
         <View class="row-[2] items-center max-w-full transition duration-pulse delay-spring ease-out starting:opacity-0 starting:translate-y-6">
           <View class="absolute -inset-x-24 -inset-y-16 bg-radial from-scrim to-transparent to-65% pointer-events-none compact:-inset-x-8" />
           <Show when={props.logo === 0 && props.name !== ""} fallback={
               <Art class={`aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />
           }>
-            <Text class={`font-display tracking-kicker uppercase text-shadow-sm text-shadow-bg max-w-full text-8xl leading-tight font-bold text-center m-0 compact:text-display-lg compact:tracking-wide`}>
+            <Text class={`max-w-full text-center m-0 ${packClass("Title", "wordmark")} compact:text-display-xl`}>
               {props.name}
             </Text>
           </Show>
         </View>
         <Show when={props.onStart}>
           <View class="row-[4] mb-10 transition duration-bounce delay-breathe ease-out starting:opacity-0 starting:translate-y-3 compact:mb-8">
-            <View class="flex-row items-center gap-x-3 py-2 px-5 animate-pulse">
+            <View class={`animate-pulse ${packClass("Screen", "prompt")}`}>
               <InputGlyph class="pointer-coarse:hidden" action="confirm" />
-              <Text class="text-base font-semibold tracking-kicker uppercase text-shadow-sm text-shadow-bg m-0 pointer-coarse:hidden compact:text-sm compact:tracking-wide">
+              <Text class="m-0 pointer-coarse:hidden">
                 {t("screen.title.press")}
               </Text>
-              <Text class="hidden text-base font-semibold tracking-kicker uppercase text-shadow-sm text-shadow-bg m-0 pointer-coarse:flex compact:text-sm compact:tracking-wide">
+              <Text class="hidden m-0 pointer-coarse:flex">
                 {t("screen.title.tap")}
               </Text>
             </View>
           </View>
         </Show>
         <View class="row-[5] flex-row justify-between items-end self-stretch gap-x-6 transition-opacity duration-bounce delay-breathe ease-out starting:opacity-0 compact:flex-col compact:items-center compact:gap-y-1">
-          <Text class="text-xs tracking-sm text-fg-muted m-0 compact:text-center">{props.legal}</Text>
-          <Text class="text-xs tabular-nums text-fg-muted m-0">{props.version}</Text>
+          <Text class={`m-0 compact:text-center ${packClass("Screen", "note")}`}>{props.legal}</Text>
+          <Text class={`m-0 tabular-nums ${packClass("Screen", "note")}`}>{props.version}</Text>
         </View>
       </View>
       <View class="absolute inset-0 pointer-events-none bg-bg opacity-0 transition-opacity duration-ping ease-out starting:opacity-100" />

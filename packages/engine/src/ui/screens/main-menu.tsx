@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import {Scroll, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import {Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { MenuEntry, MenuList } from "../controls/menu-list";
 import "./main-menu.en.strings.ts";
@@ -55,58 +55,57 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
       <View class="absolute inset-0">{props.background?.()}</View>
-      <View class="absolute inset-0 bg-linear-to-r from-bg via-material-thick via-26% to-transparent to-70% compact:hidden" />
-      <View class="absolute inset-0 bg-linear-to-b from-transparent from-60% to-bg compact:hidden" />
-      <View class="absolute inset-0 hidden compact:flex bg-linear-to-b from-material-regular via-material-regular via-48% to-bg to-70%" />
-      <Scroll class={`pt-[calc(env(hud-inset-top)+3rem)] pr-[calc(env(hud-inset-right)+2rem)] pb-[calc(env(hud-inset-bottom)+2rem)] pl-[calc(env(hud-inset-left)+3rem)] text-fg size-full compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:w-auto compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] short:pt-[calc(env(hud-inset-top)+0.75rem)] short:pb-[calc(env(hud-inset-bottom)+0.75rem)] short:pl-[calc(env(hud-inset-left)+1rem)] short:pr-[calc(env(hud-inset-right)+1rem)] disabled:text-fg-subtle`}>
+      <View class={`absolute inset-y-0 left-0 w-3/5 bg-linear-to-r from-bg via-scrim to-transparent portrait:inset-x-0 portrait:top-auto portrait:h-3/4 portrait:w-full portrait:bg-linear-to-t portrait:via-scrim compact:inset-x-0 compact:top-auto compact:h-3/4 compact:w-full compact:bg-linear-to-t compact:via-scrim`} />
+      <View class={`absolute inset-0 flex-col gap-6 pt-[calc(env(hud-inset-top)+3.5rem)] pb-[calc(env(hud-inset-bottom)+3rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:items-stretch portrait:pt-[calc(env(hud-inset-top)+6rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:items-stretch compact:gap-4 compact:pt-[calc(env(hud-inset-top)+4rem)] compact:pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:pt-[calc(env(hud-inset-top)+1rem)] short:pb-[calc(env(hud-inset-bottom)+1rem)]`}>
         <Show when={props.logo === 0 && props.name !== ""} fallback={
-            <Art class={`self-start aspect-12/5 h-auto object-contain compact:self-center compact:w-39/50 short:hidden`} kind="logo" src={props.logo} />
+            <Art class="self-start w-120 max-w-full aspect-12/5 h-auto object-contain portrait:self-center portrait:w-4/5 compact:self-center compact:w-4/5 short:w-72" kind="logo" src={props.logo} />
         }>
-          <Text class={`tracking-sm uppercase text-shadow-xs text-shadow-bg self-start max-w-full text-display-xl leading-tight font-bold m-0 compact:self-center compact:text-5xl compact:text-center short:hidden`}>
+          <Text class={`self-start max-w-140 ${packClass("Title", "wordmark")} portrait:self-center portrait:text-center portrait:max-w-full compact:self-center compact:text-center compact:max-w-full compact:text-display-xl short:text-display-lg`}>
             {props.name}
           </Text>
         </Show>
-        <Show when={props.news !== ""}>
-          <View class={`flex-row absolute right-12 bottom-12 items-center gap-x-3 w-90 py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={props.onNews ? 0 : -1}>
-            <View class="gap-y-0.5 grow shrink">
-              <Text class="text-xs font-bold tracking-kicker uppercase text-hud-accent-ink m-0">
-                {t("screen.main-menu.newsEyebrow")}
-              </Text>
-              <Text class="text-xl leading-snug font-semibold line-clamp-2 m-0 compact:text-base">
-                {props.news}
-              </Text>
-            </View>
-            <Show when={props.onNews}>
-              <Icon class="text-fg-muted size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-            </Show>
-          </View>
-        </Show>
-        <MenuList class="w-110 max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" data-after-news={props.news !== ""}>
+        <View class="grow min-h-4" />
+        <MenuList label={t("screen.main-menu.title")} class={`w-110 max-w-full p-3 ${packClass("Panel", "frame")} portrait:w-full compact:w-full`}>
           <Show when={props.canContinue && props.onContinue}>
-            <MenuEntry id="continue" class="compact:pl-6" label={t("screen.main-menu.continue")} line={props.saveLine} onPress={(e) => props.onContinue?.(e)} autofocus />
+            <MenuEntry id="continue" label={t("screen.main-menu.continue")} line={props.saveLine} onPress={(e) => props.onContinue?.(e)} autofocus />
           </Show>
           <Show when={props.onNewGame}>
-            <MenuEntry id="newGame" class="compact:pl-6" label={t("screen.main-menu.newGame")} onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue} />
+            <MenuEntry id="newGame" label={t("screen.main-menu.newGame")} onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue} />
           </Show>
           <Show when={props.onModes}>
-            <MenuEntry id="modes" class="compact:pl-6" label={t("screen.main-menu.modes")} onPress={(e) => props.onModes?.(e)} />
+            <MenuEntry id="modes" label={t("screen.main-menu.modes")} onPress={(e) => props.onModes?.(e)} />
           </Show>
           <Show when={props.onSettings}>
-            <MenuEntry id="settings" class="compact:pl-6" label={t("screen.main-menu.settings")} onPress={(e) => props.onSettings?.(e)} />
+            <MenuEntry id="settings" label={t("screen.main-menu.settings")} onPress={(e) => props.onSettings?.(e)} />
           </Show>
           <Show when={(props.onNewGame || props.onModes || props.onSettings || (props.canContinue && props.onContinue)) && (props.onCredits || props.onQuit)}>
-            <View class="h-4" />
+            <View class="h-3 short:h-1" />
           </Show>
           <Show when={props.onCredits}>
-            <MenuEntry id="credits" class="compact:pl-6" label={t("screen.main-menu.credits")} onPress={(e) => props.onCredits?.(e)} minor />
+            <MenuEntry id="credits" label={t("screen.main-menu.credits")} onPress={(e) => props.onCredits?.(e)} minor />
           </Show>
           <Show when={props.onQuit}>
-            <MenuEntry id="quit" class="compact:pl-6" label={t("screen.main-menu.quit")} onPress={(e) => props.onQuit?.(e)} minor />
+            <MenuEntry id="quit" label={t("screen.main-menu.quit")} onPress={(e) => props.onQuit?.(e)} minor danger />
           </Show>
           <View>{props.extra?.()}</View>
         </MenuList>
-      </Scroll>
-      <Text class={`absolute right-4 bottom-3 text-xs tabular-nums text-fg-muted m-0 compact:right-3 compact:bottom-1`}>
+      </View>
+      <Show when={props.news !== ""}>
+        <View class={`flex-row absolute right-16 bottom-12 items-center gap-x-3 w-90 py-3 px-4 portrait:hidden compact:hidden ${packClass("Plate", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={props.onNews ? 0 : -1}>
+          <View class="gap-y-0.5 grow shrink">
+            <Text class="text-xs font-bold tracking-kicker uppercase text-fg-muted m-0">
+              {t("screen.main-menu.newsEyebrow")}
+            </Text>
+            <Text class="text-lg leading-snug font-semibold line-clamp-2 m-0">
+              {props.news}
+            </Text>
+          </View>
+          <Show when={props.onNews}>
+            <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+          </Show>
+        </View>
+      </Show>
+      <Text class={`absolute right-4 bottom-3 tabular-nums m-0 ${packClass("Screen", "note")} compact:right-3 compact:bottom-1`}>
         {props.version}
       </Text>
     </View>

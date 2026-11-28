@@ -1,4 +1,4 @@
-import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
+import {For, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { MenuEntry, MenuList } from "../controls/menu-list";
 import "./pause.en.strings.ts";
 
@@ -90,41 +90,39 @@ function pauseRows(props: PauseScreenProps): Entry[] {
 export function PauseScreen(props: PauseScreenProps) {
   return (
     <View class={`absolute inset-0 flex-row text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onResume?.(e) }}>
-      <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-25% to-transparent to-60% compact:bg-linear-to-b compact:from-glass compact:via-glass compact:via-40% compact:to-glass compact:bg-transparent`} />
-      <Scroll class={`pr-8 pl-[calc(env(hud-inset-left)+3rem)] text-fg w-160 max-w-full h-full transition duration-base ease-out pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+2rem)] compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+1rem)] compact:w-full compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] short:py-3 short:px-4 disabled:text-fg-subtle starting:opacity-0 starting:-translate-x-6 starting:translate-y-0 shrink`}>
-        <Text class={`font-display text-8xl font-bold leading-tight tracking-xs uppercase text-fg text-shadow-xs text-shadow-bg m-0 compact:text-display-lg`}>
+      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
+      <View class={`flex-col gap-5 w-120 max-w-full h-full pt-[calc(env(hud-inset-top)+3rem)] pb-[calc(env(hud-inset-bottom)+3rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-6 transition duration-base ease-out starting:opacity-0 starting:-translate-x-6 portrait:w-full portrait:items-stretch portrait:pt-[calc(env(hud-inset-top)+5rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:w-full compact:gap-3 compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:pt-3 short:pb-3`}>
+        <Text class={`m-0 ${packClass("Screen", "heading")} portrait:self-center portrait:text-center compact:self-center compact:text-center`}>
           {t("screen.pause.title")}
         </Text>
-        <View class={`gap-y-0.5 self-start w-95 max-w-full mt-4 py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3 ${packClass("Panel", "frame")}`}>
+        <View class={`flex-col gap-y-1 self-start w-full py-3 px-5 short:hidden ${packClass("Plate", "frame")}`}>
           <Show when={props.objective !== ""}>
             <Text class="text-2xs font-bold tracking-kicker uppercase text-fg-muted m-0">
               {t("screen.pause.objectiveLabel")}
             </Text>
-            <View class="flex-row items-center gap-x-2">
-              <View class="rotate-45 bg-hud-accent shadow-glow size-2 shrink-0" />
-              <Text class={`grow shrink text-lg leading-snug font-semibold line-clamp-2 m-0 compact:text-base`}>
-                {props.objective}
-              </Text>
-            </View>
+            <Text class="text-lg leading-snug font-semibold line-clamp-2 m-0 compact:text-base">
+              {props.objective}
+            </Text>
           </Show>
-          <Text class="mt-0.5 mb-0 text-base tabular-nums text-fg-muted mx-0">
+          <Text class="m-0 text-sm tabular-nums text-fg-muted">
             {t("screen.pause.Played", { played: formatDuration(props.played) })}
           </Text>
         </View>
-        <MenuList wrap class="mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4">
+        <View class="grow min-h-2" />
+        <MenuList wrap label={t("screen.pause.title")} class={`w-full p-3 ${packClass("Panel", "frame")} short:grid short:grid-cols-[1fr_1fr] short:gap-x-3`}>
           <For each={pauseRows(props)} key={(r) => r.key}>
             {(r) => (
               <>
                 <Show when={r().apart}>
-                  <View class="h-4 short:h-1" />
+                  <View class="h-3 short:h-1" />
                 </Show>
-                <MenuEntry id={r().name} size="md" class="compact:pl-6" label={r().label} minor={r().minor} danger={r().danger} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)} />
+                <MenuEntry id={r().name} size="md" label={r().label} minor={r().minor} danger={r().danger} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)} />
               </>
             )}
           </For>
         </MenuList>
-      </Scroll>
-      <View class="grow shrink basis-0 items-center justify-center p-8 compact:hidden">{props.side?.()}</View>
+      </View>
+      <View class="grow shrink basis-0 items-center justify-center p-8 portrait:hidden compact:hidden">{props.side?.()}</View>
     </View>
   );
 }

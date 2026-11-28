@@ -15,8 +15,10 @@ export interface CreditsScreenProps {
   offset: number;
   /** The key art's texture under the roll's veil (og.load.texture; 0: the style's dark ground). */
   keyArt: Texture | 0;
-  /** The game's logo texture at the head of the roll (og.load.texture; 0: the logo slot's placeholder). */
+  /** The game's logo texture at the head of the roll (og.load.texture; 0: the name set as a wordmark). */
   logo: Texture | 0;
+  /** The game's name, set as the pack's wordmark at the head of the roll where there is no logo. */
+  name?: string | undefined;
   /** Content the caller supplies (was the end snippet). */
   end?: (() => JSX.Element) | undefined;
   /** Content the caller supplies (was the licences snippet). */
@@ -34,38 +36,32 @@ export interface CreditsScreenProps {
  */
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
-    <View class={`absolute inset-0 grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e), back: (e) => props.onBack?.(e) }}>
+    <View class={`absolute inset-0 text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e), back: (e) => props.onBack?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
-      <View class={`absolute inset-0 bg-scrim opacity-soft compact:opacity-100 compact:bg-linear-to-b compact:from-shade-deep compact:via-shade-deep compact:via-40% compact:to-shade-deep compact:bg-transparent`} />
-      <View class="flex-row items-center py-4 px-8 gap-2 compact:py-2 compact:px-3">
-        <Button class={`shrink`} onPress={(e) => props.onBack?.(e)}>
-          <View class="flex-row items-center gap-x-1">
-            <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
-            <Text class="shrink">{t("screen.common.back")}</Text>
-          </View>
-        </Button>
-      </View>
+      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
       <View class="grow shrink basis-0 overflow-hidden">
-        <View class="absolute top-0 items-center gap-y-12 py-12 px-4 inset-x-0 compact:gap-y-8 compact:py-6 compact:px-4" style={{ translate: `0 ${-props.offset}px` }}>
-          <Art class="w-full max-w-115 aspect-12/5 h-auto object-contain" kind="logo" src={props.logo} />
+        <View class="absolute top-0 inset-x-0 items-center gap-y-14 pt-24 pb-16 px-6 compact:gap-y-10 compact:pt-16" style={{ translate: `0 ${-props.offset}px` }}>
+          <Show when={props.logo === 0} fallback={<Art class="w-full max-w-115 aspect-12/5 h-auto object-contain" kind="logo" src={props.logo} />}>
+            <Show when={props.name}>
+              <Text class={`text-center max-w-full m-0 ${packClass("Title", "wordmark")} compact:text-display-xl`}>{props.name}</Text>
+            </Show>
+          </Show>
           <For each={[...props.sections, ...engineCredits.map((s) => ({ ...s, title: t(s.title) }))]}>
             {(s) => (
-            <View class="w-full max-w-140 items-center text-center gap-y-4">
-              <View class="flex-row items-center justify-center gap-x-3 w-full">
-                <Text class={`tracking-kicker uppercase text-hud-accent-ink shrink text-caption font-bold m-0 compact:tracking-label`}>
-                  {s().title}
-                </Text>
-              </View>
+            <View class="w-full max-w-140 items-center text-center gap-y-5">
+              <Text class={`m-0 ${packClass("Screen", "note")} text-sm font-bold uppercase tracking-kicker text-fg`}>
+                {s().title}
+              </Text>
               <For each={s().names}>
                 {(n) => (
-                <View class="items-center text-center gap-y-0.5">
-                  <Text class={`text-shadow-xs text-shadow-bg text-4xl leading-tight font-semibold m-0 compact:text-2xl`}>
+                <View class="items-center text-center gap-y-1">
+                  <Text class={`m-0 ${packClass("Screen", "heading")} text-4xl normal-case compact:text-2xl`}>
                     {n().name}
                   </Text>
                   <Show when={n().role}>
-                    <Text class={`text-caption font-semibold tracking-xl uppercase text-fg-muted m-0`}>
+                    <Text class={`m-0 ${packClass("Screen", "note")} uppercase tracking-label font-semibold`}>
                       {n().role}
                     </Text>
                   </Show>
@@ -79,16 +75,22 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <View class="w-full max-w-140">{props.licences?.()}</View>
         </View>
       </View>
-      <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted pointer-coarse:hidden compact:hidden">
+      <View class="absolute top-[calc(env(hud-inset-top)+1.5rem)] left-[calc(env(hud-inset-left)+2rem)] compact:top-[calc(env(hud-inset-top)+0.75rem)] compact:left-[calc(env(hud-inset-left)+1rem)]">
+        <Button size="sm" onPress={(e) => props.onBack?.(e)}>
+          <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronLeft" />
+          <Text>{t("screen.common.back")}</Text>
+        </Button>
+      </View>
+      <View class={`flex-row absolute right-8 bottom-6 items-center gap-x-2 pointer-coarse:hidden compact:hidden ${packClass("Screen", "note")}`}>
         <InputGlyph keyLabel={t("screen.credits.fasterKey")} size="sm" />
-        <Text class="shrink">{t("screen.credits.faster")}</Text>
+        <Text>{t("screen.credits.faster")}</Text>
       </View>
     </View>
   );
 }
 
 export const fixtures: Record<string, Partial<CreditsScreenProps>> = {
-  default: {"keyArt":0,"logo":0,"offset":0,"sections":[{"id":"item-0","names":[{"id":"item-0","name":"Ada Lin","role":""}],"title":"Directed by"},{"id":"item-1","names":[{"id":"item-0","name":"Tomas Reyes","role":"Lead artist"},{"id":"item-1","name":"Mira Okafor","role":"Environment"}],"title":"Art"},{"id":"item-2","names":[{"id":"item-0","name":"Jun Sato","role":"Composer"}],"title":"Music"}]},
+  default: {"keyArt":0,"logo":0,"name":"Lantern Coast","offset":0,"sections":[{"id":"item-0","names":[{"id":"item-0","name":"Ada Lin","role":""}],"title":"Directed by"},{"id":"item-1","names":[{"id":"item-0","name":"Tomas Reyes","role":"Lead artist"},{"id":"item-1","name":"Mira Okafor","role":"Environment"}],"title":"Art"},{"id":"item-2","names":[{"id":"item-0","name":"Jun Sato","role":"Composer"}],"title":"Music"}]},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

@@ -77,10 +77,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
         tabNext: (e) => stepPage(e, 1),
       }}
     >
-      <View class={`absolute bg-glass backdrop-blur-regular inset-0`} />
-      <View class={`flex-row min-h-12 items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
+      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
+      <View class={`flex-row min-h-12 items-center gap-x-5 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>
-          <Button class={`text-fg-muted compact:-ml-2 shrink`} autofocus onPress={(e) => props.onBack?.(e)}>
+          <Button size="sm" class="shrink" autofocus onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
               <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
               <Text class="shrink">{t("screen.common.back")}</Text>
@@ -88,17 +88,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </Button>
         </Show>
         <View class="flex-row grow shrink basis-0 items-baseline flex-wrap gap-x-4 gap-y-0.5 compact:grow compact:shrink-0 compact:basis-full compact:items-start compact:flex-col">
-          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg m-0 compact:text-3xl shrink`}>
+          <Text class={`m-0 shrink ${packClass("Screen", "heading")} compact:text-3xl`}>
             {t("screen.settings.title")}
           </Text>
           <Show when={props.note !== ""}>
-            <Text class="mr-0 ml-auto text-base text-warn line-clamp-2 my-0 compact:ml-0 compact:text-caption shrink">
+            <Text class={`mr-0 ml-auto line-clamp-2 my-0 compact:ml-0 shrink ${packClass("Screen", "note")} text-sm`}>
               {props.note}
             </Text>
           </Show>
         </View>
       </View>
-      <View class="grow shrink basis-0 gap-y-4 min-h-0">
+      <View class={`grow shrink basis-0 gap-y-4 min-h-0 px-7 pt-5 pb-7 compact:px-4 compact:pt-4 compact:pb-5 ${packClass("Panel", "frame")}`}>
         <Show when={props.page}>
           <View class={`flex-row items-center gap-x-3`}>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
@@ -115,7 +115,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             </Scroll>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabNext" />
           </View>
-          <View class="grow shrink basis-0 min-h-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 compact:grid-cols-1">
+          <View class="grow shrink basis-0 min-h-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-8 portrait:grid-cols-1 compact:grid-cols-1">
             <Scroll class={`grow shrink basis-0 gap-y-0.5 p-0 m-0 ${packClass("List", "cascade")}`}>
               <For each={props.entries} key={(entry) => entry.id}>
                 {(entry) => (
@@ -185,11 +185,11 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 )}
               </For>
             </Scroll>
-            <View class="flex-col justify-start gap-y-2 compact:hidden">
+            <View class="flex-col justify-start gap-y-2 portrait:hidden compact:hidden">
               <Show when={inspected()}>
                 {(item) => (
                   <Show when={item().description}>
-                    <View class={`flex-col gap-y-2 p-5 ${packClass("Plate", "frame")}`}>
+                    <View class={`flex-col gap-y-2 p-5 ${packClass("Slot", "frame")}`}>
                       <Text class="font-display text-xl font-bold leading-snug text-fg m-0">{item().name}</Text>
                       <Text class="text-base leading-normal text-fg-muted m-0">{item().description}</Text>
                     </View>

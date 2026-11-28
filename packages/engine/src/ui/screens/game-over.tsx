@@ -43,60 +43,58 @@ export interface GameOverScreenProps {
  */
 export function GameOverScreen(props: GameOverScreenProps) {
   return (
-    <View class={`absolute inset-0 grow shrink basis-0 justify-center items-center w-full p-8 gap-2 compact:p-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
-      <View class={`items-center w-full max-w-105 p-0 gap-4 disabled:text-fg-subtle short:grid short:items-center short:gap-y-2 short:gap-x-6 short:max-w-210 short:grid-cols-[1fr_1fr] short:grid-rows-[1fr_auto_auto_auto_auto_1fr] short:justify-items-center ${packClass("Panel", "frame")}`}>
-        <Text sound="error" class={`font-display text-display-lg compact:text-display-md font-bold leading-flat tracking-md uppercase text-danger max-w-full text-center m-0 short:text-8xl`}>
-          {props.title}
-        </Text>
-        <View class="w-full h-0.5">
-          <Text class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-danger shadow-glow shadow-foe size-2.25" />
-        </View>
-        <View class="flex-row flex-wrap justify-center gap-y-1 gap-x-6 items-end">
-          <View class="items-center shrink">
-            <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0`}>
+    <View class={`absolute inset-0 flex-col justify-center items-center gap-6 p-8 compact:gap-4 compact:p-5 short:flex-row short:gap-8 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
+      <Text sound="error" class={`max-w-full text-center m-0 ${packClass("Screen", "heading")} text-display-2xl compact:text-display-lg short:text-display-md short:shrink short:basis-0 short:grow`}>
+        {props.title}
+      </Text>
+      <View class={`flex-col items-stretch gap-5 w-110 max-w-full px-8 pt-6 pb-8 compact:px-5 compact:pt-5 compact:pb-6 ${packClass("Panel", "frame")}`}>
+        <View class="flex-row flex-wrap justify-center items-end gap-y-1 gap-x-8">
+          <View class="items-center">
+            <Text class="tracking-label uppercase text-fg-muted text-xs font-semibold m-0">
               {t("screen.game-over.score")}
             </Text>
-            <Text class={`tabular-nums text-fg text-5xl leading-flat font-bold m-0`}>
+            <Text class="tabular-nums text-5xl leading-flat font-bold m-0">
               {t("screen.game-over.Value", { value: props.score })}
             </Text>
           </View>
-          <Text class={`text-fg-muted text-title font-bold tabular-nums m-0 shrink`}>
+          <Text class="text-fg-muted text-title font-bold tabular-nums m-0">
             {t("screen.game-over.Best", { best: props.best })}
           </Text>
         </View>
         <View class="self-stretch">{props.stats?.()}</View>
         <Show when={props.offer} fallback={
-            <View class="grid justify-items-stretch self-stretch gap-2 short:justify-self-stretch">
+            <View class="flex-col items-stretch gap-3">
               <Show when={props.onRetry}>
-                <Button variant="primary" class={`min-h-9`} onPress={(e) => props.onRetry?.(e)}>
+                <Button variant="primary" onPress={(e) => props.onRetry?.(e)} autofocus>
                   <Text>{t("screen.game-over.retry")}</Text>
                 </Button>
               </Show>
               <Show when={props.checkpoint && props.onCheckpoint}>
-                <Button class={``} onPress={(e) => props.onCheckpoint?.(e)}>
+                <Button onPress={(e) => props.onCheckpoint?.(e)}>
                   <Text>{t("screen.game-over.checkpoint")}</Text>
                 </Button>
               </Show>
               <Show when={props.onQuit}>
-                <Button class={``} onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
+                <Button variant="ghost-muted" onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
               </Show>
             </View>
         }>
-          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi rounded-card p-4 gap-2 short:justify-self-stretch`}>
-            <Text class="justify-self-center text-center leading-22 text-display-md font-bold tabular-nums text-fg inset-ring-marker inset-ring-gold m-0 size-22 rounded-full short:leading-16 short:size-16">
+          <View class={`flex-col items-center gap-3 p-5 ${packClass("Slot", "frame")}`}>
+            <Text class="text-center leading-22 text-display-md font-bold tabular-nums m-0 size-22 rounded-full inset-ring-marker inset-ring-gold short:leading-16 short:size-16">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>
-            <Text class="text-title font-bold tracking-md uppercase text-fg m-0">
+            <Text class="text-title font-bold tracking-md uppercase text-center m-0">
               {t("screen.game-over.revive")}
             </Text>
             <View class="self-stretch">{props.offerArt?.()}</View>
             <Show when={props.onRevive}>
-              <Button variant="primary" class={`justify-self-stretch min-h-9`} onPress={(e) => props.onRevive?.(e)}>
+              <Button variant="primary" class="self-stretch" onPress={(e) => props.onRevive?.(e)} autofocus>
                 <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
               </Button>
             </Show>
             <Show when={props.onDecline}>
-              <Button class={`justify-self-stretch`} onPress={(e) => props.onDecline?.(e)}>
+              <Button variant="ghost-muted" class="self-stretch" onPress={(e) => props.onDecline?.(e)}>
                 <Text>{t("screen.game-over.decline")}</Text>
               </Button>
             </Show>
@@ -112,6 +110,7 @@ const press = () => {};
 
 export const fixtures: Record<string, Partial<GameOverScreenProps>> = {
   default: {"best":24100,"checkpoint":true,"left":5,"offer":true,"price":"50 gems","score":18420,"title":"You died","onRetry":press,"onCheckpoint":press,"onQuit":press,"onRevive":press,"onDecline":press},
+  retry: {"best":24100,"checkpoint":true,"left":0,"offer":false,"price":"","score":18420,"title":"You died","onRetry":press,"onCheckpoint":press,"onQuit":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

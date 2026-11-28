@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "MainMenuScreen, PauseScreen, SettingsScreen, GameOverScreen, LoadingScreen, CreditsScreen, TitleScreen",
+      "change": "The built-in screens are re-laid in the pack's parts, with separate landscape and portrait arrangements. The main menu and pause menu stand in the pack's Panel inset from the screen's edge, not as a bare list against it; their headings, notes and veils take the new Screen.heading, Screen.note, Screen.prompt and Screen.veil slots; settings and game over put their controls in one Panel; loading draws its bar with Progress. The main menu's Quit row is drawn as a danger row.",
+      "fix": "A game that placed its own content against the old layout (the main menu's news card, the pause menu's side) checks it on its screens; a game that wants the former arrangement copies the screen's source into its own code."
+    }
+  ],
+  "added": [
+    {
+      "member": "CreditsScreenProps.name",
+      "summary": "The game's name, set as the pack's wordmark at the head of the roll where there is no logo."
+    }
+  ]
+}

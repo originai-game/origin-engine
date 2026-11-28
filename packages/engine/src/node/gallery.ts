@@ -122,6 +122,8 @@ export const ART: Record<string, Record<string, string[]>> = {
   "screens/title · default": { keyArt: ["banner-coast.png"] },
   "screens/main-menu · default": { keyArt: ["banner-coast.png"] },
   "screens/loading · default": { keyArt: ["banner-coast.png"] },
+  "screens/loading · ready": { keyArt: ["banner-coast.png"] },
+  "screens/credits · default": { keyArt: ["banner-coast.png"] },
 };
 
 /**
