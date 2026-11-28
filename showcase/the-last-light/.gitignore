@@ -59,8 +59,6 @@ tools/refs/*.png
 /assets/textures/art/portrait-cultist.png
 /assets/textures/art/portrait-mage.png
 /assets/textures/art/portrait-ranger.png
-/assets/vfx/cinematic-realism/textures/dust.png
-/assets/vfx/cinematic-realism/textures/explosion.png
 /assets/vfx/effekseer-starter/Icicle2/model-icicle1.glb
 /assets/vfx/effekseer-starter/Icicle2/model-icicle3.glb
 /assets/vfx/effekseer-starter/meteo1/model-block1.glb
@@ -147,11 +145,4 @@ tools/refs/*.png
 /assets/vfx/effekseer-starter/textures/star.png
 /assets/vfx/effekseer-starter/textures/starpart_.png
 /assets/vfx/effekseer-starter/textures/t0002.png
-/assets/vfx/realistic-starter/textures/dirt.png
-/assets/vfx/realistic-starter/textures/fire.png
-/assets/vfx/realistic-starter/textures/flame.png
-/assets/vfx/realistic-starter/textures/muzzle.png
-/assets/vfx/realistic-starter/textures/ring.png
-/assets/vfx/realistic-starter/textures/scorch.png
-/assets/vfx/realistic-starter/textures/smoke.png
 # og-assets end
