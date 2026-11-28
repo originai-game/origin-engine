@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 mod input;
 mod scatter;
-pub use input::Document;
+pub use input::{Document, SourceSite};
 pub(crate) use scatter::expand;
 
 /// Direct placements plus those inherited from every reached prefab.
@@ -101,6 +101,7 @@ pub fn cook(
     let mut entities = Vec::new();
     let mut lines = Vec::new();
     let mut origins = Vec::new();
+    let mut sites = Vec::new();
     let mut overrides = BTreeMap::new();
     let mut refs: Vec<String> = Vec::new();
     let mut subscene_ids: Vec<String> = Vec::new();
@@ -116,6 +117,7 @@ pub fn cook(
     while let Some((node, parent)) = stack.pop() {
         let index = entities.len() as u32;
         origins.push(node.file.clone());
+        sites.push(&node.sites);
         if node.link.is_some() {
             let fields: Vec<_> = node
                 .origins
@@ -344,6 +346,11 @@ pub fn cook(
     }
     if !prefabs.publish {
         writer.table("lines", &lines, row_hash::<SceneLineRow>());
+        writer.raw(
+            "sources",
+            serde_json::to_vec(&sites).map_err(|e| CookError(e.to_string()))?,
+            1,
+        );
         writer.raw(
             "origins",
             serde_json::to_vec(&(origins, overrides)).map_err(|e| CookError(e.to_string()))?,

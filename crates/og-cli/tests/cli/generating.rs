@@ -4155,3 +4155,154 @@ fn generated_scene_cooks_as_authored_declarations() {
         assert!(!out.status.success(), "accepted {invalid}: {}", text(&out));
     }
 }
+
+/// The author loop persists defining literals, refuses computed values and
+/// invalid schemas without writing, and keeps source locations out of publish.
+#[test]
+fn source_commands_generate_and_edit_checked_declarations() {
+    use serde_json::{Value, json};
+    let root = TempDir::new("og-source-commands");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Source","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'source',entry:'src/main.ts',schemas:['src/schema/records.ts']});",
+    );
+    write("src/main.ts", "export default {};\n");
+    write(
+        "src/schema/records.ts",
+        "import * as s from '@origingame/engine/schema';export const Stats=s.defineComponent('Stats',{weight:s.f32()});",
+    );
+    let call = |args: &[&str]| og().args(args).current_dir(&root).output().unwrap();
+    for (id, kind, data) in [
+        (
+            "base/pieces/marker",
+            "prefab",
+            json!({"entity":{"name":"marker","components":{"Stats":{"weight":2}}}}),
+        ),
+        (
+            "base/room",
+            "scene",
+            json!({"entities":[{"name":"placed","prefab":{"$ogRef":"base/pieces/marker"}}]}),
+        ),
+    ] {
+        let out = call(&[
+            "add",
+            "content",
+            id,
+            kind,
+            "--value",
+            &data.to_string(),
+            "--json",
+        ]);
+        assert!(out.status.success(), "{}", text(&out));
+        let again = call(&[
+            "add",
+            "content",
+            id,
+            kind,
+            "--value",
+            &data.to_string(),
+            "--json",
+        ]);
+        assert!(!again.status.success(), "overwrote declaration");
+    }
+    let out = call(&[
+        "add",
+        "source",
+        "src/levels/second.ts",
+        "--from",
+        "src/main.ts",
+        "--json",
+    ]);
+    assert!(out.status.success(), "{}", text(&out));
+    let out = call(&["add", "test", "tests/nested/start.og.ts", "--json"]);
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(root.join("src/levels/second.ts").is_file());
+    assert!(root.join("tests/nested/start.og.ts").is_file());
+    let out = call(&[
+        "set",
+        "base/room",
+        "placed",
+        "Stats",
+        "weight",
+        "7",
+        "--json",
+    ]);
+    assert!(out.status.success(), "{}", text(&out));
+    let event: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(event["file"], "content/pieces/marker.ts");
+    assert_eq!(
+        (event["old"].as_f64(), event["new"].as_f64()),
+        (Some(2.0), Some(7.0))
+    );
+    let source = std::fs::read(root.join("content/pieces/marker.ts")).unwrap();
+    let invalid = call(&[
+        "set",
+        "base/room",
+        "placed",
+        "Stats",
+        "weight",
+        "\"heavy\"",
+        "--json",
+    ]);
+    assert!(!invalid.status.success(), "{}", text(&invalid));
+    assert_eq!(
+        std::fs::read(root.join("content/pieces/marker.ts")).unwrap(),
+        source
+    );
+    write(
+        "content/computed.ts",
+        "import {file} from '@origingame/engine/author';\nexport default file.scene({entities:[{name:'computed',components:{Stats:{weight:2+3}}}]});\n",
+    );
+    let source = std::fs::read(root.join("content/computed.ts")).unwrap();
+    let out = call(&[
+        "set",
+        "base/computed",
+        "computed",
+        "Stats",
+        "weight",
+        "9",
+        "--json",
+    ]);
+    assert!(!out.status.success(), "{}", text(&out));
+    let diagnostic: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(diagnostic["code"], "computed-source");
+    assert_eq!(diagnostic["file"], "content/computed.ts");
+    assert_eq!(diagnostic["line"], 2);
+    assert_eq!(
+        std::fs::read(root.join("content/computed.ts")).unwrap(),
+        source
+    );
+    for publish in [false, true] {
+        let report = og_cook::cook_project(
+            &root,
+            &og_cook::CookOptions {
+                publish,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = bundle.read("base/room").unwrap();
+        let blob = bundle
+            .blob::<og_cook::format::Scene>("base/room", &bytes)
+            .unwrap();
+        if publish {
+            assert!(blob.raw("sources").is_err());
+        } else {
+            let sites: Value = serde_json::from_slice(blob.raw("sources").unwrap()).unwrap();
+            assert_eq!(sites[0]["Stats.weight"]["file"], "content/pieces/marker.ts");
+            assert!(sites[0]["Stats.weight"]["column"].as_u64().unwrap() > 1);
+            assert_eq!(sites[0][""]["file"], "content/room.ts");
+        }
+    }
+}

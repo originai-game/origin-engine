@@ -150,6 +150,11 @@ function connect() {
     // A cold restart (or a reconnect to a server that made one since): the new build.
     if (m.type === "reload" && m.build && m.build !== build) location.reload();
     if (m.type === "files" || m.type === "code") queue(m);
+    if (m.type === "source_changed") {
+      void probe()?.devSourceChanged?.(m);
+      post("source_changed", m);
+    }
+    if (m.type === "edit_result") post("edit_result", m);
     if (m.type === "error") (m.error ? say(`${(m.edits ?? []).join(", ")}: ${m.error}`, true) : say("the build is clean again"));
   };
   socket.onclose = () => {
@@ -161,9 +166,8 @@ function connect() {
 connect();
 
 // ── the Stage's dev channel (same document, window.postMessage) ─────────────
-// {og:"dev", v:1, from:"page"|"host", type, id?, …}: hello, inspector {open}. v1 has no Keep
-// (`keep: false`: the overlay's own Keep stays) and sends no `edits`. The inspector's Save and
-// read_source go over the og-probe wire (shell/wire.ts, docs/web-export.md §og dev --web).
+// Structured edits name scene/entity/component/field/value only. Neither Stage
+// nor the runtime supplies source text, paths or a second copy of scene data.
 const post = (type, body = {}) => window.postMessage({ og: "dev", v: 1, from: "page", type, ...body }, location.origin);
 let hostSeen = false;
 // The page tracks the inspector's state: the host's `inspector` sets it, and its toggle key (F1
@@ -179,6 +183,10 @@ window.addEventListener("message", (ev) => {
   const m = ev.data;
   if (!m || m.og !== "dev" || m.v !== 1 || m.from !== "host") return;
   if (m.type === "hello") hostSeen = true;
+  if (m.type === "edit") {
+    if (socket?.readyState === 1) socket.send(JSON.stringify({ type: "edit", id: m.id, edit: m.edit }));
+    else post("edit_result", { id: m.id, ok: false, error: "dev socket is disconnected; reconnect before editing" });
+  }
   if (m.type === "inspector") {
     const open = !!m.open;
     void probe()?.devInspector?.(open).then((r) => {
@@ -192,7 +200,7 @@ window.addEventListener("keydown", (ev) => {
 const engine = JSON.parse(document.getElementById("og-config")?.textContent ?? "{}").engine ?? "";
 void (async () => {
   for (let i = 0; i < 20 && !hostSeen; i++) {
-    post("hello", { inspector: true, keep: false, engine });
+    post("hello", { inspector: true, sourceEdits: true, keep: false, engine });
     await new Promise((r) => setTimeout(r, 250));
   }
 })();

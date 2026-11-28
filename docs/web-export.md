@@ -1043,8 +1043,20 @@ and prints one line on stdout when ready:
   `hello {inspector: true, keep: false, engine}` every 250 ms, at most 20
   times, until the host answers `hello {}`; the host's `inspector
   {open}` opens or closes the inspector, and the page sends `inspector
-  {open}` whenever it changes, F1 included. Version 1 has no Keep (the
-  overlay's own Keep stays) and sends no `edits`.
+  {open}` whenever it changes, F1 included. `hello` advertises `sourceEdits: true`.
+  The host sends `edit {id, edit: {scene, entity, component, field, value}}`;
+  scene is a canonical scene/prefab content ID, entity its name or root/child path.
+  No paths, source text or runtime override data are accepted. The server resolves
+  the authored field (an inherited field edits its defining prefab), changes only
+  TS literals through the syntax tree, validates and commits under the source
+  lock, incrementally cooks and hot reloads. Computed expressions refuse the edit
+  with file:line:column and no write. The page answers `edit_result {id, ok, error?}`.
+  A committed edit emits `source_changed {file, line, column, path, old, new,
+  cooked, error?}` on the dev stream, Stage channel and probe wire (`kind: event`,
+  `event: source_changed`); `cooked: false` means the source changed but cooking
+  failed. Cooked scene `sources` metadata records entity and component-field
+  locations only in development; publish outputs omit it. There is no Keep
+  (the overlay's own Keep stays) or runtime scene writeback.
 - **Runtime tuning.** Inspector/Tune edits and prefab Revert change memory
   only, identically on native and web. Save, Apply and `scene_saved` are
   removed (docs/platform-asks.md #22/#23). Persist explicit TS literals

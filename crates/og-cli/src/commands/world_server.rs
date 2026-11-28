@@ -14,7 +14,7 @@ use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const USAGE: &str = "usage: og world-server [--listen ADDR] [--wt-listen ADDR --cert F --key F] [--config F] [--auth none|hs256|jwks] [--dev]
+pub const USAGE: &str = "usage: og world-server [--listen ADDR] [--wt-listen ADDR --cert F --key F] [--config F] [--auth none|hs256|jwks] [--dev]
          [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--issuer ISS] [--max-lifetime S] [--max-players N] [--metrics ADDR] [--store F] [--quiet]
        og world-server load [--url ws://HOST:PORT/ | https://HOST:PORT/ [--cert-hash HEX]] [--bots N] [--area M] [--centre X,Z]
          [--areas N --spacing M] [--speed MPS] [--warmup S] [--seconds S] [--secret-file F --audience GAME] [--world W] [--batch N]

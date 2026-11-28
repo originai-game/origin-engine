@@ -129,7 +129,7 @@ impl Server {
                         "protocolVersion": version,
                         "capabilities": { "tools": {} },
                         "serverInfo": { "name": "og", "version": env!("CARGO_PKG_VERSION") },
-                        "instructions": "The Origin Engine tool. `api_list`, `api_find` and `api_show` query API members, checked file inputs and UI components (`api_show og.physics.castRay`, `api_show file:terrain`, `api_show Button`); `create`, `check`, `cook`, `build`, `run`, `test`, `explore`, `replay`, `render`, `compare`, `frame`, `cost`, `ui`, `style`, `model`, `vfx`, `sfx`, `sprite`, `materials`, `i18n`, `flow`, `fmt`, `font`, `assets`, `prefab` and `doctor` operate the project; `probe` and `run_logs` inspect a running game (`api_show probe` lists the members).",
+                        "instructions": "The Origin Engine tool. `api_list`, `api_find` and `api_show` query API members, checked file inputs and UI components (`api_show og.physics.castRay`, `api_show file:terrain`, `api_show Button`); `create`, `add`, `set`, `check`, `build`, `run`, `test`, `explore`, `replay`, `render`, `compare`, `frame`, `cost`, `ui`, `style`, `model`, `vfx`, `sfx`, `sprite`, `materials`, `i18n`, `flow`, `font`, `assets`, `prefab` and `doctor` operate the project; `probe` and `run_logs` inspect a running game (`api_show probe` lists the members). Run, test, dev and build prepare assets incrementally. Cook is for platform tooling, CI and troubleshooting.",
                     }),
                 )
             }
@@ -310,7 +310,6 @@ impl Server {
                 push(&mut args, "--lang", "lang");
                 push(&mut args, "--music", "music");
                 flag(&mut args, "--force", "force");
-                append_json = false;
             }
             "explore" => {
                 args.push("explore".into());
@@ -572,12 +571,9 @@ impl Server {
                 args.extend(["flow".into(), sub.into()]);
                 project(&mut args);
             }
-            "fmt" => {
-                args.push("fmt".into());
-                if let Some(path) = a.get("path").and_then(Value::as_str) {
-                    args.push(path.into());
-                }
-                flag(&mut args, "--check", "check");
+            "add" | "set" => {
+                args.push(name.into());
+                push(&mut args, "--project", "project");
             }
             "font" => {
                 let sub = a
@@ -895,7 +891,7 @@ fn tools() -> Value {
         ),
         tool(
             "cook",
-            "`og cook --json`: cook assets/ into cooked/ incrementally.",
+            "`og cook --json`: explicit incremental preparation for platform tooling, CI and troubleshooting. Run, test, dev and build prepare content automatically.",
             json!({
                 "project": project, "threads": n("Worker threads."),
                 "report": b("Include slowest assets report."), "args": args,
@@ -1143,13 +1139,18 @@ fn tools() -> Value {
             &["subcommand"],
         ),
         tool(
-            "fmt",
-            "`og fmt --json`: format `.ogt` files into canonical layout or check formatting.",
+            "add",
+            "Create content/**/*.ts declarations, src/**/*.ts[x] code or tests/**/*.og.ts playtests. Pass command arguments in args, as in og add --help; --from names a file (MCP has no stdin). Existing files are refused unless --replace is explicit for source/test. Output and errors are JSON.",
             json!({
-                "path": s("File, directory, or project root (default: current directory)."),
-                "check": b("Check without writing."), "args": args,
+                "project": project, "args": args,
             }),
-            &[],
+            &["args"],
+        ),
+        tool(
+            "set",
+            "Edit a checked TypeScript literal, then cook incrementally. args is [content-id, pointer, JSON-value] or [scene-or-prefab, entity, component, field, JSON-value]. Computed values are refused at file:line:column without writing. Emits source_changed with file, line, old and new; og dev reloads it.",
+            json!({ "project": project, "args": args }),
+            &["args"],
         ),
         tool(
             "font",

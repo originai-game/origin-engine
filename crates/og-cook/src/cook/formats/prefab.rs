@@ -17,7 +17,8 @@ pub fn documents(
     use crate::cook::{
         source_content, source_index, source_project, source_records, source_schemas,
     };
-    let project = source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let project =
+        source_project::Project::open_with_overlay(root, overlay).map_err(|e| e.to_string())?;
     let index = source_index::Index::open_with_overlay(root, &project, overlay)
         .map_err(|e| e.to_string())?;
     let records = source_records::Records::open(root, &project)?;
@@ -73,6 +74,7 @@ pub struct Node {
     pub line: usize,
     pub file: String,
     pub origins: BTreeMap<(String, String), String>,
+    pub sites: BTreeMap<String, super::scene::SourceSite>,
 }
 
 impl Node {
@@ -314,10 +316,17 @@ impl<'a> Flattener<'a> {
             line: doc.line(path),
             file: doc.file.clone(),
             origins: BTreeMap::new(),
+            sites: BTreeMap::new(),
         };
+        if let Some(site) = doc.site(path) {
+            node.sites.insert(String::new(), site);
+        }
         for (c, fields) in &e.components {
             for f in fields.keys() {
                 node.origins.insert((c.clone(), f.clone()), source.into());
+                if let Some(site) = doc.field_site(path, c, f) {
+                    node.sites.insert(format!("{c}.{f}"), site);
+                }
             }
         }
         for (i, c) in e.children.iter().enumerate() {
@@ -363,7 +372,8 @@ impl<'a> Flattener<'a> {
         let merge = |node: &mut Node,
                      model: Option<&str>,
                      static_model,
-                     components: &BTreeMap<String, Map<String, Value>>| {
+                     components: &BTreeMap<String, Map<String, Value>>,
+                     at: &str| {
             if let Some(m) = model {
                 node.model = Some(m.into());
                 node.origins
@@ -391,6 +401,9 @@ impl<'a> Flattener<'a> {
                         .insert(field.clone(), value.clone());
                     node.origins
                         .insert((name.clone(), field.clone()), origin.clone());
+                    if let Some(site) = doc.field_site(at, name, field) {
+                        node.sites.insert(format!("{name}.{field}"), site);
+                    }
                 }
                 node.components.entry(name.clone()).or_default();
             }
@@ -401,22 +414,26 @@ impl<'a> Flattener<'a> {
             e.model.as_ref().map(|r| r.id.as_str()),
             e.static_model,
             &e.components,
+            path,
         ) {
             self.orphans.push(orphan("", Some(f)));
         }
         if let Some(subscene) = &e.scene {
             root.subscene = Some(subscene.id.clone());
         }
-        for edit in &e.edits {
+        if let Some(site) = doc.site(path) {
+            root.sites.insert(String::new(), site);
+        }
+        for (edit_index, edit) in e.edits.iter().enumerate() {
             match edit {
                 PrefabEdit::Override {
-                    path,
+                    path: target,
                     model,
                     static_model,
                     components,
                 } => {
-                    let Some(node) = root.find_mut(path) else {
-                        self.orphans.push(orphan(path, None));
+                    let Some(node) = root.find_mut(target) else {
+                        self.orphans.push(orphan(target, None));
                         continue;
                     };
                     for f in merge(
@@ -424,8 +441,9 @@ impl<'a> Flattener<'a> {
                         model.as_ref().map(|r| r.id.as_str()),
                         *static_model,
                         components,
+                        &format!("{path}/edits/{edit_index}"),
                     ) {
-                        self.orphans.push(orphan(path, Some(f)));
+                        self.orphans.push(orphan(target, Some(f)));
                     }
                 }
                 PrefabEdit::Remove { path, component } => match component {

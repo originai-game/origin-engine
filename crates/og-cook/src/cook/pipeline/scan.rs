@@ -80,8 +80,7 @@ pub(crate) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
 }
 
 /// Whether an `.ogt` of type `ty` has lines of its own below its header
-/// (CSS declarations, a recipe), which `.ogt`'s reader and `og fmt` leave
-/// alone.
+/// (CSS declarations, a recipe), which `.ogt`'s reader leaves alone.
 pub fn own_lines(ty: &str) -> bool {
     ty == "style"
 }

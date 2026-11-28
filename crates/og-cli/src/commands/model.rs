@@ -73,7 +73,7 @@ pub fn failed(e: impl std::fmt::Display) -> Failure {
     Failure::Failed(e.to_string())
 }
 
-const USAGE: &str = "usage: og model <command> <input> [options]
+pub const USAGE: &str = "usage: og model <command> <input> [options]
   an input is a program (.json) or a mesh file (.glb .gltf .obj .fbx);
   OBJ takes --unit-mm MM (default metres); OBJ and glTF take --up AXIS and
   --front AXIS (+x -x +y -y +z -z: the file's axes that are the object's up and
@@ -93,6 +93,8 @@ const USAGE: &str = "usage: og model <command> <input> [options]
                                                 at its pose, its joints and interference;
                                                 --axes: a mesh's extents, area facing
                                                 each way and where its mass sits
+  compare  <input> --image <view.png> [--view front]
+           <input> --image <view>=<png> …        silhouette, aspect and colour facts against images
   preview  <input> -o <out.png> [--views N] [--width PX] [--height PX]
            [--columns N] [--elevation RAD] [--azimuth RAD] [--no-edges] [--no-ground]
            [--fov RAD] [--unlit] [--each] [--uv [--uv-size PX]] [--env PICTURE] [--axes]

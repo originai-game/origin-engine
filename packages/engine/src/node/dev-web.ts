@@ -193,7 +193,7 @@ async function coldBuild(): Promise<void> {
 
 // ── assets: one long-running cook ───────────────────────────────────────────
 
-let cooker: { proc: { kill(): void }; cooked: Map<string, string> } | null = null;
+let cooker: { proc: { kill(): void; exited: Promise<number> }; cooked: Map<string, string> } | null = null;
 function stopCooker(): void {
   cooker?.proc.kill();
   cooker = null;
@@ -239,15 +239,8 @@ function startCooker(): void {
         const hadError = errors.cook !== null;
         errors.cook = null;
         if (hadError) tellError(edits);
-        if (!files.length) continue;
-        seq++;
-        const listed = files.map((f) => {
-          const hash = hashOf(new Uint8Array(readFileSync(join(cookedDir, f))));
-          fileSeq.set(f, { seq, hash });
-          return { path: `cooked/${f}`, hash };
-        });
         const steps = { saveToCookedMs: saved ? Math.max(0, Date.now() - saved) : null, detectMs: e.detectMs, walkMs: e.walkMs, cookMs: round(e.ms ?? 0), reportMs: e.reportMs, stampMs, savedAt: saved || null };
-        tell({ type: "files", seq, files: listed, edits, steps });
+        sendFiles(files, edits, steps);
         console.log(`${edits.join(", ")}: cooked ${files.length} file(s) in ${steps.cookMs} ms (save to cooked ${steps.saveToCookedMs} ms)`);
       }
     }
@@ -256,6 +249,55 @@ function startCooker(): void {
     const err = await new Response(proc.stderr).text();
     if (cooker === me && err.trim()) console.error(err.trim());
   })();
+}
+
+function sendFiles(files: string[], edits: string[], steps: unknown): void {
+  if (!files.length) return;
+  seq++;
+  const listed = files.map((f) => {
+    const hash = hashOf(new Uint8Array(readFileSync(join(cookedDir, f))));
+    fileSeq.set(f, { seq, hash });
+    return { path: `cooked/${f}`, hash };
+  });
+  tell({ type: "files", seq, files: listed, edits, steps });
+}
+
+// Source edits are serialized against each other and the cook watcher. The
+// binary owns AST/provenance/validation/locked writes; TS owns the dev loop.
+let editing = false;
+let editQueue = Promise.resolve();
+function sourceEdit(ws: Socket, message: Record<string, unknown>): void {
+  editQueue = editQueue.then(async () => {
+    const edit = message["edit"] as Record<string, unknown> | undefined;
+    if (!ready || building || !edit || typeof edit !== "object" || Array.isArray(edit) || ["scene", "entity", "component", "field"].some(k => typeof edit[k] !== "string" || !edit[k]) || !("value" in edit) || Object.keys(edit).some(k => !["scene", "entity", "component", "field", "value"].includes(k))) {
+      send(ws, { type: "edit_result", id: message["id"], ok: false, error: "send edit {scene, entity, component, field, value} after the dev server is ready; source paths/text are not accepted" });
+      return;
+    }
+    editing = true;
+    const previous = cooker;
+    stopCooker();
+    try {
+      await previous?.proc.exited;
+      const before = stamps(cookedDir);
+      const start = performance.now();
+      const proc = Bun.spawn([og, "set", String(edit["scene"]), String(edit["entity"]), String(edit["component"]), String(edit["field"]), JSON.stringify(edit["value"]), "--project", project, "--json"], { cwd: project, stdout: "pipe", stderr: "pipe", env: process.env });
+      const [stdout, stderr, exit] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
+      const result = JSON.parse(stdout) as Record<string, unknown>;
+      if (result["event"] === "source_changed") {
+        const event = { ...result, type: "source_changed" };
+        tell(event);
+        process.stdout.write(JSON.stringify(event) + "\n");
+        const files = changed(before, stamps(cookedDir)).filter(f => !/^\.(cook-times|conform|assets)\.ogt$/.test(f));
+        sendFiles(files, [String(result["file"])], { cookMs: round(performance.now() - start) });
+      }
+      send(ws, { ...result, type: "edit_result", id: message["id"], ok: exit === 0, ...(exit !== 0 && !result["error"] ? { error: stderr } : {}) });
+    } catch (error) {
+      send(ws, { type: "edit_result", id: message["id"], ok: false, error: String(error) });
+    } finally {
+      editing = false;
+      startCooker();
+    }
+  });
 }
 
 // ── warming: the other style packs, cooked once into the shared cook cache ──
@@ -324,7 +366,7 @@ async function check(edits: string[]): Promise<void> {
 let seenSrc = new Map<string, string>();
 function projectInputs(): Map<string, string> {
   return new Map([...stamps(project, new Map(), project, true)].filter(([p]) =>
-    p !== "project.ogt" && !p.startsWith("assets/") && (!p.startsWith("src/") || p.startsWith("src/schema/"))));
+    p !== "project.ogt" && !p.startsWith("assets/") && !/(?:^|\/)content\//.test(p) && (!p.startsWith("src/") || p.startsWith("src/schema/"))));
 }
 let seenProject = projectInputs();
 let bundling = false;
@@ -366,7 +408,7 @@ async function bundleCode(edits: string[]): Promise<void> {
 }
 
 setInterval(() => {
-  if (building) return;
+  if (building || editing) return;
   const pm = projectInputs();
   if (changed(seenProject, pm).length || [...seenProject.keys()].some(k => !pm.has(k))) {
     seenProject = pm;
@@ -415,6 +457,9 @@ const server = Bun.serve({
     const path = decodeURIComponent(url.pathname);
     const dev = path.match(/(?:^|\/)_dev\/(status|socket)$/);
     if (dev?.[1] === "socket") {
+      // A foreign website must not acquire the source-writing dev socket.
+      const origin = req.headers.get("origin");
+      if (origin && new URL(origin).host !== req.headers.get("host")) return new Response("same-origin dev socket required", { status: 403 });
       if (srv.upgrade(req, { data: { seq: 0 } })) return undefined;
       return new Response("expected a WebSocket", { status: 426, headers: NO_STORE });
     }
@@ -467,6 +512,8 @@ const server = Bun.serve({
       } catch {
         return;
       }
+      if (!m || typeof m !== "object" || Array.isArray(m)) return;
+      if (m.type === "edit") sourceEdit(ws, m as Record<string, unknown>);
       if (m.type === "hello") resync(ws, String(m.build ?? ""), Number(m.seq ?? 0));
       if (m.type === "applied" && (m.kind === "files" || m.kind === "code")) {
         last = { kind: m.kind, ms: Number(m.ms ?? 0), at: Date.now(), steps: m.steps };

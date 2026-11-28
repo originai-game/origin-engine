@@ -357,7 +357,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   let lastMemory: MemoryInfo | null = null;
   const failures: Array<{ file: string; reason: string }> = [];
   let failuresSeen = 0;
-  let wire: { announce(): void } | null = null;
+  let wire: ReturnType<typeof mountWire> | null = null;
   const onLoadFailure = (f: { file: string; reason: string }) => {
     if (!telemetry || failuresSeen >= FAILURES_MAX) return;
     failuresSeen++;
@@ -854,6 +854,12 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   if (config.build === "dev") probe["devCode"] = (url: string) => shell.call("devCode", url);
   // `devInspector`: opens or closes the inspector (`og dev --web`'s Stage channel).
   if (config.build === "dev") probe["devInspector"] = (open: boolean) => shell.call("inspector", open);
+  // Source-change notifications share the probe wire, not the simulation's
+  // event queue. There is no mutation or retained override in the engine.
+  if (config.build === "dev") probe["devSourceChanged"] = (event: Record<string, unknown>) => {
+    wire?.push({ ...event, kind: "event", event: "source_changed" });
+    window.dispatchEvent(new CustomEvent("og:source_changed", { detail: event }));
+  };
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   wire = mountWire({
     probe: () => (method, params) => shell.probe(method, params ?? {}),

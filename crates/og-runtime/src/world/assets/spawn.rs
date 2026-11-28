@@ -107,6 +107,110 @@ fn resolve<'a>(layouts: &'a BTreeMap<String, Layout>, name: &str) -> Option<&'a 
         .filter(|l| l.kind == crate::host::codec::RecordKind::Component)
 }
 
+/// Apply only changed authored fields to every live placement. The loaded
+/// cooked scene is the baseline, not a retained set of inspector overrides;
+/// simulation changes to fields the author did not edit stay untouched.
+pub(super) fn refresh_scene(
+    eng: &Engine,
+    before: &LoadedScene,
+    after: &LoadedScene,
+) -> Result<(), String> {
+    let instances: Vec<_> = eng
+        .state
+        .borrow()
+        .scene_instances
+        .iter()
+        .filter(|s| s.id == before.id)
+        .cloned()
+        .collect();
+    if instances.is_empty() {
+        return Ok(());
+    }
+    if before.entities.len() != after.entities.len()
+        || before
+            .entities
+            .iter()
+            .zip(&after.entities)
+            .any(|(a, b)| a.name != b.name || a.parent != b.parent)
+    {
+        return Err(
+            "scene structure changed; restart the running game to place its new entity tree".into(),
+        );
+    }
+    let layouts = eng.state.borrow().layouts.clone();
+    for table in &after.components {
+        let Some(layout) = resolve(&layouts, &table.name) else {
+            continue;
+        };
+        let previous = before.components.iter().find(|t| t.name == table.name);
+        for (row, bytes) in &table.rows {
+            let old = previous.and_then(|t| {
+                t.get(*row)
+                    .map(|bytes| migrate(&t.schema, bytes, layout, &mut Vec::new()))
+            });
+            let mut value = migrate(&table.schema, bytes, layout, &mut Vec::new());
+            let bindings = after.bindings.get(row).and_then(|b| b.get(&table.name));
+            let old_bindings = before.bindings.get(row).and_then(|b| b.get(&table.name));
+            value
+                .as_object_mut()
+                .expect("record value")
+                .retain(|field, v| {
+                    old.as_ref().and_then(|v| v.get(field)) != Some(v)
+                        || old_bindings.and_then(|b| b.get(field))
+                            != bindings.and_then(|b| b.get(field))
+                });
+            if value.as_object().is_none_or(|v| v.is_empty()) {
+                continue;
+            }
+            let selected: Map<_, _> = bindings
+                .into_iter()
+                .flatten()
+                .filter(|(field, _)| value.get(field.as_str()).is_some())
+                .map(|(field, v)| (field.clone(), v.clone()))
+                .collect();
+            if !selected.is_empty() {
+                super::bindings::apply(eng, eng.world()?, layout, &selected, &mut value)?;
+            }
+            let world = eng.world()?;
+            let sid = world
+                .id_by_name(&layout.schema)
+                .map_err(|e| e.reason().to_string())?;
+            for instance in &instances {
+                let Some(bits) = instance.entities.get(*row) else {
+                    continue;
+                };
+                let entity = Entity::from_bits(*bits);
+                let Ok(current) = world.get_bytes(entity, sid) else {
+                    continue;
+                };
+                let cell = instance.root.map(Entity::from_bits).filter(|root| {
+                    layout.schema == "og.Transform"
+                        && after.entities[*row].parent.is_none()
+                        && world
+                            .id_by_name(crate::world::stream::cells::CELL)
+                            .ok()
+                            .is_some_and(|id| world.get_bytes(*root, id).is_ok())
+                });
+                let placed = cell.map(|cell| {
+                    let pose = crate::world::stream::cells::pose_of(world, layout, cell);
+                    let mut placed = crate::world::stream::cells::placed(pose, &value);
+                    placed
+                        .as_object_mut()
+                        .expect("record value")
+                        .retain(|field, _| value.get(field).is_some());
+                    placed
+                });
+                let patched =
+                    layout.encode(Some(&current), Some(placed.as_ref().unwrap_or(&value)))?;
+                world
+                    .insert_bytes(entity, sid, &patched)
+                    .map_err(|e| e.reason().to_string())?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Where a scene's entities go ([`spawn_placed`]).
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Placement {

@@ -17,7 +17,8 @@ platform, input, players, languages, and music. These choices are recorded in
 and authority for name, engine pin and look. Creation also writes `content/looks/<id>.ts`
 with the chosen preset, variant and UI pack, named by the metadata's canonical
 `base/looks/<id>` reference. It exports the checked `file.look` declaration;
-no author OGT parser remains. Run `og cook` before reading the project's art brief.
+no author OGT parser remains. Dev, run, build and test prepare content incrementally.
+Platform tooling explicitly cooks after creation before reading `.og/cook/look.json`.
 It generates no gameplay or art, and changes no publish settings.
 The agent customizes shell copy and art, then builds gameplay inside its
 `session` / `playing` state. Phone/touch defaults keep touch scale; built-in
@@ -62,8 +63,8 @@ creation choice: the look draws in its preset's or variant's own mood, and
 `--mood` is refused (write `mood "<word>"` in the look file to change it).
 
 On a terminal, missing choices are prompted with inferred defaults.
-`--no-prompt` accepts those defaults. Explicit choices win. `--choices`
-remains accepted but is unnecessary: every invocation writes the block.
+`--no-prompt` accepts those defaults. Explicit choices win. `--json` never
+prompts and prints the created project's identity, choices and file list.
 `--archetype` and `--profile` are removed. Use `--view` to record the view.
 
 The id defaults to the name in lowercase-hyphen form, or the directory's

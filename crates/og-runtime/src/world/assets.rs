@@ -638,6 +638,25 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
             })
             .collect()
     };
+    let scenes: Vec<_> = {
+        let assets = eng.assets.borrow();
+        assets
+            .entries
+            .iter()
+            .enumerate()
+            .filter_map(|(i, entry)| {
+                let Payload::Scene(scene) = &entry.payload else {
+                    return None;
+                };
+                Some((
+                    i,
+                    scene.bundle,
+                    scene.id.clone(),
+                    outputs(&assets, &scene.id, scene.bundle),
+                ))
+            })
+            .collect()
+    };
     // The textures models share (assets the models name, not their own
     // `#` outputs): decoded again in place when theirs changed, so every
     // model naming one draws the edit.
@@ -658,6 +677,30 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
         }
     }
     let (mut loaded, mut failed) = (Vec::new(), Vec::new());
+    for (index, owner, id, before) in scenes {
+        if outputs(&eng.assets.borrow(), &id, owner) == before {
+            continue;
+        }
+        let decoded = decode_scene(&eng.assets.borrow(), &id, owner);
+        match decoded {
+            Ok(Some(scene)) => {
+                let previous = match &eng.assets.borrow().entries[index].payload {
+                    Payload::Scene(previous) => previous.clone(),
+                    _ => unreachable!("loaded scene"),
+                };
+                match spawn::refresh_scene(eng, &previous, &scene) {
+                    Ok(()) => {
+                        eng.assets.borrow_mut().entries[index].payload =
+                            Payload::Scene(Box::new(scene));
+                        loaded.push(id);
+                    }
+                    Err(e) => failed.push(format!("{id}: {e}")),
+                }
+            }
+            Ok(None) => failed.push(format!("{id}: updated scene bytes are not available yet")),
+            Err(e) => failed.push(format!("{id}: {e}")),
+        }
+    }
     for (h, owner, id, before) in shared {
         if outputs(&eng.assets.borrow(), &id, owner) == before {
             continue;

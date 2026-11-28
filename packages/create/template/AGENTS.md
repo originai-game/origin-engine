@@ -30,13 +30,17 @@ Look things up when you need them instead of guessing:
 
 ## Commands
 
+- `og add content <module/id> <kind> --value '<json>'`: add a checked declaration.
+- `og add source src/path.ts --from <file|->`: add game code (stdin with `-`); `--replace` updates an existing source/test file.
+- `og add test tests/name.og.ts`: add a startup playtest; `--from` supplies your own.
+- `og set <scene> <entity> <component> <field> '<json>'`: edit its source literal; computed values report their location without writing. `og set <content-id|project> <pointer> '<json>'` edits declaration or project configuration literals. All four accept `--json`.
 - `og dev` (native) or `og dev --web`: run with hot reload.
 - `og check`: type-check game code and declarations.
 - `og test`: run tests and playtests.
 - `og run --headless --commands "..."`: scripted run with screenshots and dumps.
 - `og build`: export the web build to `dist/`.
 
-These cook assets themselves.
+Dev, run, test and build cook assets themselves.
 
 ## Rules
 

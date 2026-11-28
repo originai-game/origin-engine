@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 
-const USAGE: &str = "usage: og bake projection <step> --run <dir> [options]
+pub const USAGE: &str = "usage: og bake projection <step> --run <dir> [options]
   init <level.glb> [--size N] [--view-size N] [--ratio R]
                      load the level (y up; without TEXCOORD_0 it is charted
                      by xatlas) and rasterise its texels

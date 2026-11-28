@@ -8,6 +8,15 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub use source_schemas::world::scene::{EntityInput, PrefabEdit, PrefabInput, SceneInput};
 
+/// A checked declaration's original TypeScript expression, never a runtime override.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SourceSite {
+    pub file: String,
+    pub path: String,
+    pub line: usize,
+    pub column: usize,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Document {
     pub scene: SceneInput,
@@ -17,6 +26,7 @@ pub struct Document {
     pub prefab: bool,
     pub file: String,
     pub lines: BTreeMap<String, usize>,
+    pub sites: BTreeMap<String, SourceSite>,
 }
 
 impl Document {
@@ -28,6 +38,7 @@ impl Document {
             prefab: false,
             file: String::new(),
             lines: BTreeMap::new(),
+            sites: BTreeMap::new(),
         }
     }
 
@@ -54,12 +65,34 @@ impl Document {
     pub(crate) fn locate(&mut self, content: &source_content::Content) {
         self.file = content.entry().file.clone();
         fn walk(paths: &mut Vec<String>, e: &EntityInput, path: String) {
+            fields(paths, &e.components, &path);
+            for (i, edit) in e.edits.iter().enumerate() {
+                if let PrefabEdit::Override { components, .. } = edit {
+                    fields(paths, components, &format!("{path}/edits/{i}"));
+                }
+            }
             for (i, child) in e.children.iter().enumerate() {
                 walk(paths, child, format!("{path}/children/{i}"));
             }
             paths.push(path);
         }
-        let mut paths = Vec::new();
+        fn fields(
+            paths: &mut Vec<String>,
+            components: &BTreeMap<String, Map<String, Value>>,
+            path: &str,
+        ) {
+            let escape = |s: &str| s.replace('~', "~0").replace('/', "~1");
+            for (component, values) in components {
+                for field in values.keys() {
+                    paths.push(format!(
+                        "{path}/components/{}/{}",
+                        escape(component),
+                        escape(field)
+                    ));
+                }
+            }
+        }
+        let mut paths = vec![String::new()];
         for (i, e) in self.scene.entities.iter().enumerate() {
             let path = if self.prefab {
                 "/entity".into()
@@ -73,10 +106,39 @@ impl Document {
             .locations(&paths.iter().map(String::as_str).collect::<Vec<_>>())
         {
             self.lines = paths
+                .iter()
+                .cloned()
+                .zip(locations.iter().map(|l| l.line))
+                .collect();
+            self.sites = paths
                 .into_iter()
-                .zip(locations.into_iter().map(|l| l.line))
+                .zip(locations)
+                .map(|(path, l)| {
+                    (
+                        path.clone(),
+                        SourceSite {
+                            file: self.file.clone(),
+                            path,
+                            line: l.line,
+                            column: l.column,
+                        },
+                    )
+                })
                 .collect();
         }
+    }
+
+    pub fn site(&self, path: &str) -> Option<SourceSite> {
+        self.sites.get(path).cloned()
+    }
+
+    pub fn field_site(&self, path: &str, component: &str, field: &str) -> Option<SourceSite> {
+        let escape = |s: &str| s.replace('~', "~0").replace('/', "~1");
+        self.site(&format!(
+            "{path}/components/{}/{}",
+            escape(component),
+            escape(field)
+        ))
     }
 
     pub(crate) fn bind(&mut self, graph: &source_content::Graph) {

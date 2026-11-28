@@ -159,7 +159,8 @@ impl Area {
             Area::Font => ("font", 1),
             Area::Video => ("video", 1),
             Area::Vector => ("vector", 1),
-            Area::Scene => ("scene", 1),
+            // Record development-only TypeScript entity/field source locations.
+            Area::Scene => ("scene", 2),
             Area::Data => ("data", 1),
             Area::Nav => ("nav", 1),
             // Resolved look values are native binary, not author text.

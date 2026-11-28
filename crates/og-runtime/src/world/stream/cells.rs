@@ -94,7 +94,7 @@ fn xyz(v: glam::Vec3) -> Value {
 /// An entity's world pose: its og.Transform after its parents' down the
 /// og.Parent chain ([`og_core::math::world_pose`], as physics and audio
 /// compose it).
-fn pose_of(world: &World, transform: &crate::host::codec::Layout, e: Entity) -> Pose {
+pub(crate) fn pose_of(world: &World, transform: &crate::host::codec::Layout, e: Entity) -> Pose {
     let parent = layout_parent(world);
     let local = |e: Entity| -> Option<Pose> {
         let t: record::Transform = row(world, transform, e)?;

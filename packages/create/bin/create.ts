@@ -328,6 +328,7 @@ The look, variant and UI configure its look file; no gameplay is generated.
               a look draws in its own mood (write mood "<word>" in the look file)
   --no-prompt accept inferred choices without prompting (it never prompts without a terminal)
   --force     overwrite skeleton files in a nonempty directory
+  --json      print the created directory, identity, choices and file list as JSON; never prompt
   --creation  print the creation document (every option, label, preview slot, compat rule
               and default; packages/create/README.md) as JSON and write nothing.
               --previews fills each slot from a JSON map of path -> { url, sha256, size, engine }`;
@@ -336,7 +337,7 @@ const FIELDS = ["form", "genre", "view", "look", "variant", "ui", "platform", "i
 
 function main(argv: string[]): number {
   let dir: string | undefined, name: string | undefined, id: string | undefined, premise: string | undefined;
-  let force = false, ask = true, document = false, previews: string | undefined;
+  let force = false, ask = true, document = false, asJson = false, previews: string | undefined;
   let choices: Record<string, unknown> = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -350,7 +351,7 @@ function main(argv: string[]): number {
     else if (a === "--premise") premise = value();
     else if (a === "--force") force = true;
     else if (a === "--no-prompt") ask = false;
-    else if (a === "--choices") continue;
+    else if (a === "--json") asJson = true;
     else if (a === "--creation") document = true;
     else if (a === "--previews") previews = value();
     else if (a === "--mood") throw new Error('--mood is no longer a creation choice: a look draws in its own mood (its preset\'s or variant\'s); to change it, write mood "<word>" in the game\'s look file');
@@ -365,7 +366,7 @@ function main(argv: string[]): number {
     process.stdout.write(`${JSON.stringify(creationDocument(filled), null, 2)}\n`);
     return 0;
   }
-  if (ask && process.stdin.isTTY && process.stdout.isTTY && typeof globalThis.prompt === "function") {
+  if (ask && !asJson && process.stdin.isTTY && process.stdout.isTTY && typeof globalThis.prompt === "function") {
     premise ??= globalThis.prompt("What is the game, in one line (genre, mood, setting)?") ?? "";
     for (const key of FIELDS) {
       if (choices[key] !== undefined) continue;
@@ -394,11 +395,17 @@ function main(argv: string[]): number {
     }
   }
   const made = create({ dir: dir ?? id ?? (name ? slug(name) : "origin-game"), ...(name === undefined ? {} : { name }), ...(id === undefined ? {} : { id }), ...(premise === undefined ? {} : { premise }), choices: parseCreationInput(choices), force });
+  if (asJson) { console.log(JSON.stringify({ ok: true, ...made })); return 0; }
   console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nIdentity and engine pin are in og-project.json; creation choices are in project.ts. ${made.choices.genre === FILM_GENRE ? "Write the story and segments (og api show flow), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
   return 0;
 }
 
 if (import.meta.main) {
   try { process.exit(main(process.argv.slice(2))); }
-  catch (e) { console.error(`create: ${e instanceof Error ? e.message : String(e)}`); process.exit(1); }
+  catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    if (process.argv.includes("--json")) console.log(JSON.stringify({ ok: false, error }));
+    else console.error(`create: ${error}`);
+    process.exit(1);
+  }
 }

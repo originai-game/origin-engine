@@ -94,6 +94,20 @@ fn make(s: &Source, graph: &Graph) -> Result<Document, String> {
             "components": {"og.Transform": {"position":p.to_array(), "quaternion":q.to_array(), "scale":scale.to_array()}}
         })).map_err(|e| e.to_string())?);
     }
+    if let Some(site) = doc.site("") {
+        for (i, entity) in doc.scene.entities.iter().enumerate() {
+            let path = format!("/entities/{i}");
+            doc.sites.insert(path.clone(), site.clone());
+            for (component, fields) in &entity.components {
+                for field in fields.keys() {
+                    doc.sites.insert(
+                        format!("{path}/components/{component}/{field}"),
+                        site.clone(),
+                    );
+                }
+            }
+        }
+    }
     Ok(doc)
 }
 

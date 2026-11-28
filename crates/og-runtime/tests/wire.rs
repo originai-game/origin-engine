@@ -31,7 +31,7 @@ fn delivery_dependencies_are_pinned_and_asset_identities_are_global() {
     std::fs::create_dir_all(root.join("content")).unwrap();
     std::fs::write(root.join("project.ts"), "import {defineProject,ref} from '@origingame/engine/author';export default defineProject({id:'delivery',entry:'src/main.ts',packs:[{id:'shared',include:['base/shared'],roots:[ref('base/shared')]},{id:'north',include:['base/north'],dependsOn:['shared'],roots:[ref('base/north')]}]});").unwrap();
     for name in ["shared", "north"] {
-        std::fs::write(root.join(format!("content/{name}.ts")), format!("import {{file}} from '@origingame/engine/author';export default file.scene({{entities:[{{name:'{name}'}}]}});")).unwrap();
+        std::fs::write(root.join(format!("content/{name}.ts")), format!("import {{file}} from '@origingame/engine/author';export default file.scene({{entities:[{{name:'{name}',components:{{'og.Transform':{{position:[2,3,0],quaternion:[0,0,0,1],scale:[1,1,1]}}}}}}]}});")).unwrap();
     }
     let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
@@ -55,13 +55,45 @@ fn delivery_dependencies_are_pinned_and_asset_identities_are_global() {
     let frame = og_engine_advance(engine, 1);
     assert!(frame.contains("\"ok\":true"), "{frame}");
     assert_eq!(og_load_status(engine, north), "ready");
-    assert!(og_load_scene(engine, "base/shared".into()).is_ok());
-    std::fs::write(root.join("content/shared.ts"), "import {file} from '@origingame/engine/author';export default file.scene({entities:[{name:'updated-shared'}]});").unwrap();
+    let scene = og_load_scene(engine, "base/shared".into())
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    let placed = og_world_instantiate(engine, scene, None)
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    let entity = og_world_children(engine, placed)[0].as_f64().unwrap();
+    // Runtime state on an unedited field must survive the source refresh.
+    og_world_insert(
+        engine,
+        entity,
+        "og.Transform".into(),
+        Some(json!({"scale":{"x":4,"y":5,"z":6}}).to_string()),
+    )
+    .unwrap();
+    std::fs::write(root.join("content/shared.ts"), "import {file} from '@origingame/engine/author';export default file.scene({entities:[{name:'shared',components:{'og.Transform':{position:[7,4,1],quaternion:[0,0,0,1],scale:[1,1,1]}}}]});").unwrap();
     let updated = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
     assert!(updated.ok(), "{:?}", updated.errors());
     let refreshed = dev_refresh(engine).unwrap();
     assert_eq!(refreshed["warnings"], json!([]), "{refreshed}");
     assert_eq!(og_load_status(engine, north), "ready");
+    let transform = og_world_get(engine, entity, "og.Transform".into()).unwrap();
+    assert_eq!(transform["position"], json!({"x":7.0,"y":4.0,"z":1.0}));
+    assert_eq!(transform["scale"], json!({"x":4.0,"y":5.0,"z":6.0}));
+    // The updated cooked scene, not a retained edit, is used by later spawns.
+    og_world_despawn(engine, placed).unwrap();
+    let later = og_world_instantiate(engine, scene, None)
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    let later_entity = og_world_children(engine, later)[0].as_f64().unwrap();
+    let later_transform = og_world_get(engine, later_entity, "og.Transform".into()).unwrap();
+    assert_eq!(
+        later_transform["position"],
+        json!({"x":7.0,"y":4.0,"z":1.0})
+    );
+    assert_eq!(later_transform["scale"], json!({"x":1.0,"y":1.0,"z":1.0}));
     let shared = og_load_bundle(engine, "cooked/delivery/shared".into())
         .unwrap()
         .as_f64()

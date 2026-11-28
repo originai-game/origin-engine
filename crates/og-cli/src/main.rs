@@ -10,8 +10,8 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, materials, mcp, migrate,
-    model, prefab, probe, render, replay, run, script, serve_relay, session, sfx, sprite, style,
+    cost, create, dev, doctor, explore, export, flow, frame, i18n, materials, mcp, migrate, model,
+    prefab, probe, render, replay, run, script, serve_relay, session, sfx, source, sprite, style,
     test, ui, upgrade, vfx_import, vfx_preview, video, world_server,
 };
 mod api_lookup;
@@ -45,12 +45,27 @@ usage: og <command> [options]
 commands:
   create [dir] [--name \"Name\"] [--id slug] [--premise \"one line\"] [--force] [--no-prompt]
       [--form F] [--genre G] [--view V] [--look L] [--variant V] [--ui U] [--platform P]
-      [--input I] [--players P] [--lang en,zh] [--music M]
+      [--input I] [--players P] [--lang en,zh] [--music M] [--json]
                       write one empty game project and its creation choices; `og new` is an alias;
                       never prompts with --no-prompt or without a terminal; --look is a catalogue
                       style with a preset (an unknown one exits 1, listing them);
                       --genre interactive-film adds a flow (og api show flow)
+  create --creation [--previews <json>]
+                      list creation options, labels and compatibility rules as JSON, without writing
   new [dir] [options]  alias for og create
+  add content <module/id> <kind> --value <json> [--project DIR] [--json]
+                      create a checked content declaration and its parent directories; never overwrite
+  add source <src/path.ts[x]> --from <file|-> [--replace] [--project DIR] [--json]
+                      create game code (stdin with --from -); --replace explicitly replaces an existing file
+  add test <tests/name.og.ts> [--from <file|->] [--replace] [--project DIR] [--json]
+                      create a playtest (default: startup check); --replace explicitly replaces an existing file
+  set <content-id|project> <pointer> <json> [--project DIR] [--json]
+  set <scene-or-prefab> <entity> <component> <field> <json> [--project DIR] [--json]
+                      edit checked TS literals through the syntax tree, then incrementally cook;
+                      inherited fields change their defining prefab; computed values are refused
+                      at file:line:column without writing; pointer is RFC 6901 in the factory argument;
+                      --json emits source_changed with file, line, column, old, new and cooked
+                      target project edits project.ts (modules, delivery packs, scene map or settings)
   script <file.ts> [--root DIR] [--params JSON] [--seed N] [--input name=path] [--out FILE] [--json]
                       execute a deterministic cook generator; no network, arbitrary files, processes or clock
   project [project] --json
@@ -107,7 +122,7 @@ commands:
                       keyframes/<index>.png at 1280, keyframes.png and timeline.json
   model <command> <program.json | mesh> [options]
                       og-shape's model and mesh tools: build, export, measure, preview, import,
-                      repair, decimate, unwrap, place, collide, compress, process, rig
+                      repair, decimate, unwrap, place, collide, compare, compress, process, rig, bake
                       (`og model help`)
   compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>]
       [--flip <out.png>] [--ppd P] [--regions N] [--json]
@@ -135,8 +150,8 @@ commands:
                       --raw prints the whole answer frame
   mcp                 serve the og tool over MCP on stdio: probe, run_logs, run, test, check, cook,
                       build, create, explore, replay, ui, style, model, assets, prefab, doctor,
-                      render, compare, frame, cost, vfx, sfx, sprite, materials, i18n, flow, fmt,
-                      font, api_find, api_show and api_list, with the same JSON as the commands
+                      render, compare, frame, cost, vfx, sfx, sprite, materials, i18n, flow,
+                      font, add, set, api_find, api_show and api_list, with the same JSON as the commands
   dev [project] [--port P] [--exit-after N] [--json] [--engine]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
@@ -165,7 +180,8 @@ commands:
                       only the player-facing probe members and adds the PWA (sw.js, manifest);
                       --json: the check and build events as JSON Lines
   cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]
-                      assets/ into cooked/, incrementally; --report prints the ten slowest
+                      platform, CI and troubleshooting: incrementally prepare content in cooked/;
+                      dev, run, build and test do this automatically; --report prints the ten slowest
                       assets by their last cook; --watch cooks each change, timing it
   export gltf <asset> [project] -o <file.glb> [--lod N]
                       cook the project and write the cooked model <asset> (a canonical content ID
@@ -177,10 +193,6 @@ commands:
                       --near uses caller-chosen Hamming distance 0..64; --project DIR selects a project
   assets mv <from> <to> [--project DIR] [--json]
                       move a source and its import settings, rewrite static OGT/TS asset references
-  fmt [path…] [--check] [--json]
-                      rewrite .ogt files in the canonical layout, comments kept: a file, a directory,
-                      or a project's assets/ (the default, here); entries keep their
-                      order; --check writes nothing, lists what would change and exits 1 if any does
   cache gc [--max-bytes N] [--json]
                       trim the shared cook action/content cache (default cap 10 GiB)
   bake lightmaps [project] [--samples N] [--bounces N] [--texels-per-metre N] [--sky R,G,B] [--scene <id>]
@@ -207,7 +219,7 @@ commands:
   sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ts|file.wav>]
   sfx library <dir>
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
-                      write one as an asset `og cook` synthesises (or render it to a WAV),
+                      write one as an asset the cook synthesises (or render it to a WAV),
                       or write the whole library
   materials brief <library.ts> [--json]
   materials make <library.ts> [--json]
@@ -376,12 +388,13 @@ commands:
   bake probes [project] [--commands \"t:action[:args];...\"] [--at S] [--size WxH]
                       render the baked og.ReflectionProbe captures on the native host into
                       cooked/probes/ (loaded instead of drawn on first use)
-  flow list|routes [project] [--json]
+  flow list|routes|check-cuts [project] [--json]
                       a project's flows (og.flow) from its sources: list gives each node's segment
                       (footage, live or both; duration; window or hold), the footage and scenes it
                       names (missing, placeholder) and where each choice leads; routes gives every
                       route from the start to an ending as the steps that take it, and the endings
                       none reaches (a step marked ? passes a logic node's condition)
+                      check-cuts reports missing or invalid footage cut windows and transitions
   video edges <clip> [--out DIR]
                       write <stem>.first.png and <stem>.last.png; clip is .mp4, .webm, .mov or
                       a file.video TS declaration (source and maxSeconds); requires ffmpeg (OG_FFMPEG)
@@ -417,6 +430,15 @@ options:
 /// text, on stdout with success, as `og --help` does.
 fn command_help(args: &[&str]) -> Option<String> {
     let (cmd, rest) = args.split_first()?;
+    match *cmd {
+        "new" => return command_help(&["create"]),
+        "model" => return Some(model::USAGE.into()),
+        "world-server" => return Some(world_server::USAGE.into()),
+        "bake" if rest.first() == Some(&"projection") => {
+            return Some(bake_projection::USAGE.into());
+        }
+        _ => {}
+    }
     // The entries: a line indented two spaces starts one, deeper lines go on.
     let mut entries: Vec<Vec<&str>> = Vec::new();
     let mut open = false;
@@ -482,6 +504,8 @@ fn main() -> ExitCode {
         }
         ["doctor", rest @ ..] => doctor::run(rest),
         ["create" | "new", rest @ ..] => create::run(rest),
+        ["add", rest @ ..] => source::run(rest, false),
+        ["set", rest @ ..] => source::run(rest, true),
         ["upgrade", rest @ ..] => upgrade::run(rest),
         ["run", rest @ ..] => run::run(rest),
         ["session", rest @ ..] => session::run(rest),
@@ -505,7 +529,6 @@ fn main() -> ExitCode {
         ["project", rest @ ..] => project::run(rest),
         ["export", rest @ ..] => export::run(rest),
         ["assets", rest @ ..] => assets::run(rest),
-        ["fmt", rest @ ..] => fmt::run(rest),
         ["cache", rest @ ..] => cache::run(rest),
         ["bake", "projection", rest @ ..] => bake_projection::run(rest),
         ["bake", "probes", rest @ ..] => bake_probes::run(rest),
