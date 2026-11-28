@@ -21,29 +21,68 @@ impl Packed {
     fn new(source: Atlas, target: u32, world_areas: &[f32], texels_per_metre: f32) -> Option<Self> {
         let mut lo = vec![Vec2::splat(f32::MAX); source.widths.len()];
         let mut area = vec![0.0; source.widths.len()];
+        let mut largest = vec![0.0f32; source.widths.len()];
         let mut world = vec![0.0; source.widths.len()];
         for (i, &(t, c)) in source.triangles.iter().enumerate() {
             for v in t {
                 lo[c] = lo[c].min(v);
             }
-            area[c] += (t[1] - t[0]).perp_dot(t[2] - t[0]).abs() * 0.5;
+            let triangle_area = (t[1] - t[0]).perp_dot(t[2] - t[0]).abs() * 0.5;
+            area[c] += triangle_area;
+            largest[c] = largest[c].max(triangle_area);
             world[c] += world_areas[i];
         }
         // Tiny charts get their own four-texel floor, not a global upscale.
         // Reduce only the larger charts if padding makes the first pack overflow.
         for attempt in 0..12 {
             let density = target as f32 * 0.85f32.powi(attempt);
+            let scales: Vec<_> = source
+                .widths
+                .iter()
+                .enumerate()
+                .map(|(c, width)| {
+                    let desired = if texels_per_metre > 0.0 {
+                        texels_per_metre * (world[c] / area[c]).sqrt()
+                    } else {
+                        density
+                    };
+                    desired.max(4.0 / width.min_element())
+                })
+                .collect();
+            let retry = texels_per_metre <= 0.0
+                && scales
+                    .iter()
+                    .zip(&source.widths)
+                    .any(|(&s, width)| s > 4.0 / width.min_element());
+            // One triangle per chart is a lower bound even when faces in a
+            // chart overlap. Different charts must not overlap. Reject an
+            // impossible page before xatlas builds an unbounded atlas for it;
+            // thousands of tiny islands can exceed even the source's size.
+            let minimum_area: f64 = largest
+                .iter()
+                .zip(&scales)
+                .map(|(&a, &s)| f64::from(a) * f64::from(s).powi(2))
+                .sum();
+            // xatlas rounds each span up and aligns it to texel centres
+            // (+1); the output below adds two texels on each page edge (+4).
+            if minimum_area > f64::from(target).powi(2)
+                || source
+                    .widths
+                    .iter()
+                    .zip(&scales)
+                    .any(|(width, &s)| (width * s).max_element().ceil() + 5.0 > target as f32)
+            {
+                if !retry {
+                    return None;
+                }
+                continue;
+            }
             let mut vertices = BTreeMap::new();
             let mut input_charts = Vec::new();
             let mut uv = Vec::new();
             let mut indices = Vec::new();
             for &(t, c) in &source.triangles {
-                let desired = if texels_per_metre > 0.0 {
-                    texels_per_metre * (world[c] / area[c]).sqrt()
-                } else {
-                    density
-                };
-                let scale = desired.max(4.0 / source.widths[c].min_element());
+                let scale = scales[c];
                 for v in t {
                     let next = vertices.len() as u32;
                     let i = *vertices.entry((c, key(v))).or_insert_with(|| {
@@ -57,7 +96,7 @@ impl Packed {
             let charts: Vec<_> = source.triangles.iter().map(|(_, c)| *c as u32).collect();
             let packed = og_bake::atlas::repack(&uv, &indices, &charts, 2).ok()?;
             if packed.width + 4 > target || packed.height + 4 > target || packed.pages > 1 {
-                if texels_per_metre > 0.0 {
+                if !retry {
                     return None;
                 }
                 continue;
@@ -146,7 +185,7 @@ impl Packed {
                 widths: source.widths.clone(),
             };
             let Some(padding) = dilation(&atlas, target) else {
-                if texels_per_metre > 0.0 {
+                if !retry {
                     return None;
                 }
                 continue;
