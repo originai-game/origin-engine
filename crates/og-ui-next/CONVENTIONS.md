@@ -794,7 +794,7 @@ is an error naming where it is, never ignored):
   `tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`,
   `error`, `purchase`, `reward`, `levelup`, `tick`, `step`, `swipe`,
   `notify` and `unlock`, mastered so the events are
-  balanced against each other (templates/tools/master-ui-sounds.py): a
+  balanced against each other (templates/tools/master-ui-sounds.ts): a
   pack's `volume` sets its taste, not the mix. A pack lies over the
   default one, so an event it leaves out sounds the default clip; it
   mutes one with `"volume": 0`.

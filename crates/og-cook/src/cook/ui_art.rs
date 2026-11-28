@@ -1,12 +1,12 @@
 //! The theme art generator: a theme's nine-slice frame art drawn from its
 //! art spec (a material, a shape, ornaments and the resolved palette).
 //!
-//! The spec is `templates/tools/theme-art.py`; this is its port and draws
-//! the same bytes (the digests the Python writes for every piece of every
+//! The spec is `templates/tools/theme-art.ts`; this is its port and draws
+//! the same bytes (the digests the Bun tool writes for every piece of every
 //! spec in `templates/tools/theme-art-specs.json` are
 //! `crates/og-cook/tests/ui_art_parity.json`, part of `spec_key`). Every operation
-//! keeps the Python's order and uses only + - * / sqrt, floor and
-//! comparisons in f64, so the two agree exactly; read the Python for what
+//! keeps the reference tool's order and uses only + - * / sqrt, floor and
+//! comparisons in f64, so the two agree exactly; read the TypeScript for what
 //! each step draws and why.
 //!
 //! Each piece is drawn on its collapsed canvas (its insets, no middle) and
@@ -1002,7 +1002,7 @@ fn ornament(cv: &mut Canvas, c: &Colors, d: &[f64], o: &Value, b: [f64; 4]) -> R
 
 // ----------------------------------------------------------- the pieces
 
-/// Every piece of `spec`, in the Python's order.
+/// Every piece of `spec`, in the reference tool's order.
 pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     let si = spec.get("scale").and_then(Value::as_u64).unwrap_or(4) as usize;
     let s = si as f64;

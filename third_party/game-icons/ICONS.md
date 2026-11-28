@@ -2,7 +2,7 @@
 
 From https://github.com/game-icons/icons at `82d948812bfe3f269ef8f731dcdb07b08160edc4`, CC BY 3.0
 (`LICENSE`), their 512-unit paths scaled to the 24-unit grid and the
-site's background square dropped by `templates/tools/make-game-icons.py`.
+site's background square dropped by `templates/tools/make-game-icons.ts`.
 The engine's credits (`packages/engine/src/credits.ts`) name each author.
 
 | Engine name | game-icons.net icon | Author |

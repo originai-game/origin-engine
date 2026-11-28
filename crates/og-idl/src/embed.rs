@@ -1,7 +1,7 @@
 //! The static word-embedding half of `og api find`: a model2vec model
 //! (minishlab/potion-base-8M, MIT; `third_party/potion-base-8M/`) cut to 128
 //! dimensions and int8 (`crates/og-api/search/words.bin`, written by
-//! `make-model.py` beside it). A text's vector is the mean of its WordPiece
+//! `make-model.ts` beside it). A text's vector is the mean of its WordPiece
 //! tokens' vectors, normalised; there is no network and no inference beyond
 //! that mean, so a query embeds in microseconds on one core.
 //!

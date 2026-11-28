@@ -10,7 +10,7 @@ potion models are published.
 Used by `og api find` (`crates/og-idl/src/embed.rs`): the token table cut to
 its first 128 (PCA-ordered) dimensions and stored as int8 with one f32 scale
 per token in `crates/og-api/search/words.bin`, written by
-`crates/og-api/search/make-model.py`, which checks the sha256 of the
+`bun crates/og-api/search/make-model.ts`, which checks the sha256 of the
 downloaded `model.safetensors` and `tokenizer.json`. The WordPiece tokenizer
 is a port of the BERT basic and WordPiece tokenizers the model's
 `tokenizer.json` names.

@@ -4,7 +4,7 @@
 that name (the default pack's `iconSet`, docs/ui.md §3.3); names it lacks fall
 back to the engine's Lucide line icons (`back`, `close`, `chevronLeft`, `gear` …).
 Every icon sits on a 24-unit grid and is cooked as a distance field at 48 px
-an em, crisp from 16 to 64 px. `templates/tools/make-game-icons.py` writes this
+an em, crisp from 16 to 64 px. `templates/tools/make-game-icons.ts` writes this
 directory; edit the tool, not the files.
 
 ## Hero icons (tones)

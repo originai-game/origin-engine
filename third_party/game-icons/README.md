@@ -6,7 +6,7 @@ Silhouettes from [game-icons.net](https://game-icons.net)
 
 They make up the ink icons of the engine's game icon set,
 `templates/styles/shared/icons/game.ogt`: `ICONS.md` names each one, its
-source and its author. `templates/tools/make-game-icons.py` fetches them at a
+source and its author. `templates/tools/make-game-icons.ts` fetches them at a
 pinned revision, scales their paths from the 512-unit to the 24-unit grid and
 drops the site's background square; the shapes are otherwise unchanged.
 

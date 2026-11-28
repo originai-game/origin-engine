@@ -7,7 +7,7 @@ never embeds the Rive runtime. What it takes from rive-runtime
 
 | What | Source | Where |
 |---|---|---|
-| The format's type keys, their parents, and property keys with field types and defaults | `include/rive/generated/**/*_base.hpp`, `core_registry.hpp` | `crates/og-cook/src/cook/riv/defs.rs`, written by `scripts/gen-rive-defs.py` |
+| The format's type keys, their parents, and property keys with field types and defaults | `include/rive/generated/**/*_base.hpp`, `core_registry.hpp` | `crates/og-cook/src/cook/riv/defs.rs`, written by `bun scripts/gen-rive-defs.ts` |
 | The binary layout: fingerprint, version, table of contents, objects | `runtime_header.hpp`, `core/binary_reader.cpp` and https://rive.app/docs/runtimes/advanced-topic/format | `riv/read.rs` |
 | Which objects take an artboard id (`claimsArtboardSlot`, `readNullObject`) | `file.cpp`, `importers/*` | `riv/convert.rs` |
 | Path construction, rounded corners, the cubic vertices and the parametric shapes | `shapes/path.cpp`, `shapes/cubic_*_vertex.cpp`, `rectangle.cpp`, `ellipse.cpp`, `triangle.cpp`, `polygon.cpp`, `star.cpp` | `crates/og-ui/src/rive/player.rs` (`outline`, `build`, `ideal`) |

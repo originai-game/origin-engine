@@ -1,6 +1,6 @@
 # Font packs: licences
 
-Made by `make-packs.py` from google/fonts: each a Noto face at Regular (wght
+Made by the original Python generator (now `bun make-packs.ts`) from google/fonts: each a Noto face at Regular (wght
 400, wdth 100), every layout feature kept, no hinting. Copyright The Noto
 Project Authors; the CJK faces Copyright 2014-2021 Adobe, with Reserved Font
 Name 'Source'. The emoji face is Noto Color Emoji's COLRv1 build from

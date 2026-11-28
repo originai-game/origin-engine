@@ -32,7 +32,7 @@ stack together on the real engine:
   vignette.
 - **Camera.** og.Follow2D, clamped to the map.
 
-`art.py` generates the tiles, the map, the props, their sheet and
+`bun art.ts` generates the tiles, the map, the props, their sheet and
 `src/art.ts` (cell sizes and the map's layout); rerun it to change them.
 
 **vfx2d.** `vfx2d()` in `src/main.ts` is where the dust puff goes once

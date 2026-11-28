@@ -142,7 +142,7 @@ fn resolve_with(
 pub struct Theme {
     /// The structured fields the dimensions compile to, without art.
     pub pack: Map<String, Value>,
-    /// The art spec (`templates/tools/theme-art.py`'s input): the palette,
+    /// The art spec (`templates/tools/theme-art.ts`'s input): the palette,
     /// material, shape and ornaments.
     pub art: Value,
     /// The recipe's own pack, laid last.

@@ -341,7 +341,7 @@ impl Timing<'_> {
 
 /// The default pack's sounds: each event's clip of the shared set
 /// (`@styles/shared/sfx/default/`, mastered by
-/// templates/tools/master-ui-sounds.py so the events are balanced), with a
+/// templates/tools/master-ui-sounds.ts so the events are balanced), with a
 /// small pitch spread on the repeated ones.
 pub(super) fn sounds() -> Value {
     const SFX: &str = "@styles/shared/sfx/default";

@@ -35,7 +35,7 @@ front of it apart. It exercises the 2D stack together on the real engine:
 - **Loose PNGs packed.** The props (`assets/props/*.png`) are the still
   sources of one sheet, `content/props/props.ts`, with `crop: 'each'`.
 
-`art.py` generates the walls, their tileset and map, the floor's body, the
+`bun art.ts` generates the walls, their tileset and map, the floor's body, the
 props, their sheet and `src/art.ts` (each prop's cell size); rerun it to change them. The GIFs
 are copied from the generated character set.
 

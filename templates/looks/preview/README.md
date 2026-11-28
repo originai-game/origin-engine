@@ -8,7 +8,7 @@ never promises more than a game in that look draws (docs/art.md §2.6).
   bush, a crate and a street lantern on a meadow that rolls away to hills
   and a village. Round forms and rolling land on purpose: a look's facets,
   cel bands, strokes or material must show on them. Every model is cooked,
-  so the cook conforms each to the look's art contract. `make3d.py` writes
+  so the cook conforms each to the look's art contract. `bun make3d.ts` writes
   the two glbs (the crate, and the 10 x 10 cell meadow, within every look's
   prop budget) from `sources/`; the rest is checked `file.model` TypeScript
   under `content/models/`, loaded by canonical content ID.
