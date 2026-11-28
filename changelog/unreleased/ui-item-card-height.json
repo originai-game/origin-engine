@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "RpgItemCard",
+      "change": "The item card is as tall as its content (at most its container), not stretched to fill it with an empty lower half; its change chips draw the trend triangle without the square ground behind it.",
+      "fix": "A layout that relied on the card filling its column gives the card's container the height it wants."
+    }
+  ]
+}

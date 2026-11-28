@@ -67,7 +67,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
   const tiered = () => tier() !== "common";
   return (
     <View
-      class={`group/card relative grow shrink basis-0 min-h-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}
+      class={`group/card relative shrink min-h-0 max-h-full p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}
       label={props.name}
       onAction={{ details: (e) => props.onEquip?.(e) }}
       data-tier-common={tier() === "common"}
@@ -115,7 +115,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
                   </Text>
                   <Show when={s().delta}>
                     <View class={`${deltaChip} data-trend-up:nine-none data-trend-down:nine-none`} data-trend-down={(s().trend) === "down"} data-trend-up={(s().trend) === "up"}>
-                      <Icon name="play" class="hidden bg-current size-2 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
+                      <Icon name="play" class="hidden size-2.5 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
                       <Text class="whitespace-nowrap shrink">{s().delta}</Text>
                     </View>
                   </Show>
@@ -162,7 +162,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
                     <View class="flex-row items-center w-16 gap-2 shrink" role="cell">
                       <Show when={s().delta}>
                         <View class={deltaChip} data-trend-down={(s().trend) === "down"} data-trend-up={(s().trend) === "up"}>
-                          <Icon name="play" class="hidden bg-current size-2 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
+                          <Icon name="play" class="hidden size-2.5 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
                           <Text class="whitespace-nowrap shrink">{s().delta}</Text>
                         </View>
                       </Show>
