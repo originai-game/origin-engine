@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI backdrop filters",
+      "summary": "Backdrop captures now bind the filter shader's sampler, preventing native driver crashes when drawing glass panels such as MainMenuScreen news cards and timeline caption plates. No game changes are required."
+    }
+  ]
+}

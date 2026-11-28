@@ -3,7 +3,7 @@
 //! blends, on the output, its plain view, a caller's view and a float
 //! output.
 use glam::Vec3;
-use og_render::paint::{PaintKind, PaintQuad};
+use og_render::paint::{PaintEffect, PaintGroup, PaintKind, PaintQuad};
 use og_render::{Background, Overlay, RenderDesc, RenderScene, RenderTarget, Renderer, Tonemap};
 
 const W: u32 = 128;
@@ -166,6 +166,52 @@ fn a_translucent_fill_blends_in_encoded_srgb_as_css_does() {
         // caller's view meets it in the view's light instead (ui/paint.rs).
         if !matches!(to, To::View) {
             exact(64, 96, grey(64), "white over the frame");
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_backdrop_filter_captures_and_composites_the_underlying_paint() {
+    // Panel.frame and Plate.frame take this capture path. Its bind group
+    // must be complete even though the capture operation uses textureLoad:
+    // the filter shader also declares a sampler for its other operations.
+    for to in [To::Offscreen, To::Plain, To::View, To::Float] {
+        let px = render_to(to, |scene| {
+            let mut dim = og_render::paint::COLOR_IDENTITY;
+            for (i, row) in dim.iter_mut().enumerate().take(3) {
+                row[i] = 0.5;
+            }
+            scene.ui.paint.filters.push(dim);
+            scene
+                .ui
+                .paint
+                .effects
+                .extend([PaintEffect::Blur(2.0), PaintEffect::Matrix(0)]);
+            scene.ui.paint.groups.push(PaintGroup {
+                quad: 1,
+                end: 2,
+                first: 0,
+                count: 2,
+                xf: 0,
+                backdrop: true,
+                material: None,
+            });
+            let mut composite = solid([32.0, 16.0, 64.0, 96.0], WHITE, 1.0);
+            composite.kind = PaintKind::Group as u32;
+            vec![
+                solid([0.0, 0.0, 128.0, 128.0], [200, 40, 70], 1.0),
+                composite,
+            ]
+        });
+        // The colour matrix dims the captured paint only inside the
+        // composite. A missing capture or composite cannot pass.
+        for (x, y, want) in [(8, 64, [200, 40, 70]), (64, 64, [100, 20, 35])] {
+            let got = at(&px, x, y);
+            assert!(
+                got.iter().zip(want).all(|(&g, w)| g.abs_diff(w) <= 2),
+                "{to:?} at ({x}, {y}): {got:?}"
+            );
         }
     }
 }

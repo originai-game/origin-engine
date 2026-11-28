@@ -1059,6 +1059,7 @@ impl FilterRunner {
                         wgpu::BindingResource::TextureView(inputs.white),
                         wgpu::BindingResource::TextureView(inputs.white),
                         self.uniforms[u].as_entire_binding(),
+                        wgpu::BindingResource::Sampler(&self.sampler),
                     ],
                 );
                 passes.push(Pass { group, target: out });
