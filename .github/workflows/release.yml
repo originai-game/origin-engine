@@ -4,9 +4,9 @@
 # create-game), and the macOS and Windows jobs build only their native addon
 # and og (`build.sh --native`, `pack.sh --native`). The assemble job puts the
 # tarballs together and archives them, signed with a throwaway key made in
-# the job (scripts/release.sh archive), for the install test's host half. Nothing is published or signed here:
-# the tarballs come back to the Mac with `scripts/release.sh fetch <run-id>`
-# (or `scripts/release.sh dev <run-id>` for a dev build), which archives and
+# the job (scripts/release.sh archive), for the install test's host half. Nothing is published or signed with the release key here:
+# the tarballs come back to the orb with `scripts/release.sh fetch <run-id>`
+# (or `scripts/release.sh dev <dir> --revision <sha>` for a committed dev build), which archives and
 # signs them with the project secret OG_ENGINE_MINISIGN_KEY, and `verify`
 # then `publish` run there by hand (docs/release.md §3). Run it from the
 # Actions tab or `gh workflow run release.yml --ref main`; its logic stays in
@@ -88,14 +88,14 @@ jobs:
       - name: Dev version
         if: inputs.dev
         run: bun scripts/release-bump.ts --dev "${{ needs.name.outputs.dev }}" && cargo update --workspace -q
-      - name: Build the ${{ matrix.platform }} addon and og (release)
-        run: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native
       - name: Pack @origingame/engine-${{ matrix.platform }}
-        run: sh packages/engine/scripts/pack.sh --native
+        run: scripts/release.sh pack --target "${{ matrix.platform }}" ${{ inputs.dev && '--dry-run' || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: engine-${{ matrix.platform }}
-          path: packages/engine/dist/pack/*.tgz
+          path: |
+            dist/release/*/*.tgz
+            dist/release/*/pack-*.json
           if-no-files-found: error
           retention-days: 14
 
@@ -134,14 +134,19 @@ jobs:
         with:
           tool: cargo-zigbuild@0.23.4
       - name: Pack the wasm, linux-x64, the engine and create-game
-        run: scripts/release.sh pack
+        env:
+          RUSTC_WRAPPER: og-sccache-wrap
+        run: scripts/release.sh pack --target linux-x64 ${{ inputs.dev && '--dry-run' || '' }}
       - name: Version
         id: version
         run: echo "version=$(bun scripts/release-bump.ts --print)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: web
-          path: dist/release/${{ steps.version.outputs.version }}/*.tgz
+          path: |
+            dist/release/${{ steps.version.outputs.version }}/*.tgz
+            dist/release/${{ steps.version.outputs.version }}/pack-*.json
+            dist/release/${{ steps.version.outputs.version }}/NOTES.md
           if-no-files-found: error
           retention-days: 14
       - name: Disk
@@ -152,7 +157,7 @@ jobs:
 
   # The tarballs archived (scripts/release.sh archive, unsigned), and the
   # install test's host half on this runner as a smoke of the linux-x64
-  # archive (no renderer here: frames unchecked; the Mac runs `verify`, host
+  # archive (no renderer here: frames unchecked; the orb runs `verify`, host
   # and container, on what it archives and signs from the fetched tarballs).
   assemble:
     needs: [name, native, web]
@@ -192,6 +197,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ needs.web.outputs.version }}
-          path: dist/release/${{ needs.web.outputs.version }}/*.tgz
+          path: |
+            dist/release/${{ needs.web.outputs.version }}/*.tgz
+            dist/release/${{ needs.web.outputs.version }}/pack-*.json
+            dist/release/${{ needs.web.outputs.version }}/NOTES.md
           if-no-files-found: error
           retention-days: 30

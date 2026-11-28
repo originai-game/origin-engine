@@ -2,7 +2,7 @@
 // archive's bytes and entries, its place in manifest.json and SHA256SUMS,
 // and the check that keeps packages/vfx-packs/ out of the engine archives.
 import { afterAll, describe, expect, test } from "bun:test";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -115,4 +115,61 @@ test("docs/web-export.md's variant table is wasm-crates.txt's feature sets", () 
   const cells = [...table.matchAll(/`--no-default-features --features ([a-z0-9,]+)`/g)].map((m) => m[1]!);
   expect([...new Set(cells)].sort()).toEqual([...new Set(feats.values())].sort());
   for (const name of [...feats.keys()]) expect(doc).toContain(`--features ${feats.get(name)}`);
+});
+
+test("private staging round-trips all hosts and rejects a wrong commit or corrupt payload", async () => {
+  const source = scratch("og-stage-source-");
+  const dest = scratch("og-stage-dest-");
+  const version = "dev.20261128.9001";
+  const revision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: import.meta.dir, encoding: "utf8" }).trim();
+  const targets = ["linux-x64", "darwin-arm64", "win32-x64"];
+  const objects = new Map<string, Uint8Array>();
+  const server = Bun.serve({
+    port: 0,
+    async fetch(req) {
+      if (req.headers.get("authorization") !== "Bearer test-staging-only") return new Response(null, { status: 401 });
+      const path = new URL(req.url).pathname;
+      if (req.method === "PUT") {
+        const bytes = new Uint8Array(await req.arrayBuffer());
+        if (sha(Buffer.from(bytes)) !== req.headers.get("x-content-sha256")) return new Response(null, { status: 400 });
+        objects.set(path, bytes);
+        return new Response(null, { status: 201 });
+      }
+      return new Response(objects.get(path) ?? null, { status: objects.has(path) ? 200 : 404 });
+    },
+  });
+  const cli = async (verb: string, dir: string, extra: string[] = [], token = "test-staging-only") => {
+    const p = Bun.spawn([process.execPath, join(import.meta.dir, "release-stage.ts"), verb, "--version", version,
+      "--revision", revision, "--dir", dir, ...extra], {
+      cwd: join(import.meta.dir, ".."), stdout: "pipe", stderr: "pipe",
+      env: { ...process.env, OG_ENGINE_STAGING_URL: `http://127.0.0.1:${server.port}`, OG_ENGINE_STAGING_TOKEN: token },
+    });
+    const [exit, stderr] = await Promise.all([p.exited, new Response(p.stderr).text()]);
+    return { exit, stderr };
+  };
+  try {
+    const names = targets.map((t) => `origingame-engine-${t}-${version}.tgz`).concat([
+      `origingame-engine-${version}.tgz`, `origingame-create-game-${version}.tgz`,
+      `origingame-design-${version}.tgz`, `origingame-engine-wasm-symbols-${version}.tgz`, "NOTES.md",
+    ]);
+    for (const name of names) writeFileSync(join(source, name), `distinct bytes of ${name}`);
+    for (const target of targets) {
+      expect((await cli("record", source, ["--target", target, "--elapsed", "37", "--dirty"])).exit).toBe(0);
+      expect((await cli("push", source, ["--target", target])).exit).toBe(0);
+    }
+    expect((await cli("pull", dest, [], "wrong-token")).stderr).toContain("401");
+    expect((await cli("pull", dest)).exit).toBe(0);
+    for (const name of names) expect(readFileSync(join(dest, name))).toEqual(readFileSync(join(source, name)));
+    const path = `/${version}/${revision}/darwin-arm64/pack.json`;
+    const original = objects.get(path)!;
+    const record = JSON.parse(new TextDecoder().decode(original));
+    record.revision = "f".repeat(40);
+    objects.set(path, new TextEncoder().encode(JSON.stringify(record)));
+    expect((await cli("pull", dest)).stderr).toContain("pack identity differs");
+    objects.set(path, original);
+    objects.set(`/${version}/${revision}/darwin-arm64/origingame-engine-darwin-arm64-${version}.tgz`, new TextEncoder().encode("corrupt"));
+    expect((await cli("pull", dest)).stderr).toContain("staging sha256 or size mismatch");
+  } finally {
+    server.stop(true);
+  }
 });

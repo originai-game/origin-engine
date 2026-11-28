@@ -264,8 +264,7 @@ sha256_is() { [ "$(sha256sum "$1" | awk '{print $1}')" = "$2" ] || { og_err "$1:
 if [ "$os-$arch" != Linux-x86_64 ]; then
   og_say "zig, cargo-zigbuild: not installed on $os-$arch (release packing runs on Linux x86_64)"
 elif [ "${OG_TOOLS_NO_PACKING:-}" = 1 ]; then
-  # Orb setup: ziglang.org serves the archive at well under 1 MB/s, and an orb
-  # never packs a release. Rerun this script without it before build.sh --linux-x64.
+  # Explicit opt-out for machines that do not pack Linux releases.
   og_say "zig, cargo-zigbuild: skipped (OG_TOOLS_NO_PACKING=1)"
 else
   if command -v zig >/dev/null && [ "$(zig version)" = "$ZIG_VERSION" ]; then

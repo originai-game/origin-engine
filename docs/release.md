@@ -282,8 +282,8 @@ each target's archive (§1) from them.
 
 | Package | Contents | Built by |
 |---|---|---|
-| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish` with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs`, `knowledge/` (the generated wiki, the look catalogue, the look presets as og-cook flattened them, the scaffold, `mount.ts` and `validate.ts`) and `styles/` (the built-in UI styles, which og's cook copies into a game's bundle only for the style it names); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first), in `scripts/release.sh pack` on macrunner |
-| `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
+| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish` with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs`, `knowledge/` (the generated wiki, the look catalogue, the look presets as og-cook flattened them, the scaffold, `mount.ts` and `validate.ts`) and `styles/` (the built-in UI styles, which og's cook copies into a game's bundle only for the style it names); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first), in the orb's `scripts/release.sh pack --target linux-x64` |
+| `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile | `scripts/release.sh pack --target <target>`: linux-x64 in the orb by cargo zigbuild (glibc 2.31), darwin-arm64 natively on a Mac satellite |
 | `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on studio-win (§3) |
 | `@origingame/create-game` | `bin/create.ts`, `template/` (the project structure and connected menu/navigation shell) and `film/` (the interactive-film overlay); it reads the engine package beside it: its art brief and creation vocabulary from `knowledge/scripts/{brief,creation}.ts`, the look catalogue from `knowledge/looks/catalogue.json`, built-in screen translations from `src/ui/screens/` and the font packs from `fonts/` | `packages/create` `prepack` |
 | `@origingame/design` | `tokens/*.css`, the `tokens.json` generated from them and `design-language.md`, the design language the engine's default UI style is generated from and origin-agent pins | `bun pm pack` of `packages/design` in `scripts/release.sh pack` |
@@ -371,39 +371,22 @@ the root installers move only with a newer release (each version keeps its
 own, §1). Every archive is at most
 210 MiB, the platform's request limit.
 
-**A release, step by step:** the packing hosts build the tarballs, and an
-orb that holds the signing key and the upload token (the project secrets)
-does the rest, so the key never leaves it.
+**A release, step by step:** three hosts pack in parallel. The coordinator orb alone holds the minisign key and publish token; neither is sent to a packing host. macrunner is no longer in the release path.
 
-1. In the orb, at the release commit with a clean tree:
-   `scripts/release.sh bump <v>`, commit and push it, so both hosts pack the
-   same commit.
-2. On the Mac (macrunner, the release worktree at that commit): `nice -n 10
-   scripts/release.sh pack`. It packs the darwin-arm64 and linux-x64
-   tarballs, create-game and design into `dist/release/<v>/` and ends by
-   naming the missing win32-x64 tarball.
-2a. On the GPU host (Colab through `colab-gpu`, docs/ci.md §The GPU host, a checkout at the same commit with
-   the Mac's `dist/release/<v>/` tarballs copied in): `scripts/release.sh
-   previews <v>`, which writes `dist/release/<v>/previews/` and
-   `looks-render.json`; both go to the orb with the tarballs.
-3. On studio-win (Git Bash, `E:\src\origin-engine` at the same commit):
-   `OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh
-   packages/engine/scripts/pack.sh --native`, giving
-   `packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz`. It never
-   compiles the wasm.
-4. Both hosts send their tarballs to the
-   orb by Amp's thread file transfer, and the GPU host its previews and
-   `looks-render.json`. In the orb: copy them into
-   `dist/release/<v>/`, then `scripts/release.sh archive`,
-   `scripts/release.sh verify` (the full install test, not `--core`, host
-   and container), `scripts/release.sh sign`, and `scripts/release.sh
-   publish` with `OG_PLATFORM_ENGINE_UPLOAD_TOKEN`.
-5. Check the result as an author would: `curl -fsSL
+1. In the orb, bump `<v>`, commit the release inputs and record `git rev-parse HEAD`. Make that exact full commit available on all three hosts. Each host checks it before starting; each pack record names it. `pack` requires a clean tree, checks that tracked inputs did not change during the build, and never archives or publishes.
+2. Start these together at that commit:
+   - Orb: `scripts/release.sh pack --target linux-x64`. Builds Linux with `cargo zigbuild --target x86_64-unknown-linux-gnu.2.31` (never the orb's glibc), wasm, engine, create-game and design, and release notes. `.agents/setup` installs the pinned zig, cargo-zigbuild, wasm-bindgen and Binaryen tools through `scripts/install-tools.sh`.
+   - This thread's Mac satellite: `mac_sidecar start`, then `scripts/release.sh pack --target darwin-arm64`. The mirrored checkout needs Git metadata at the same commit (the mirror does not carry `.git`); seed it from a Git bundle, not from another branch. Native only; no wasm or Linux build.
+   - studio-win (Git Bash, `E:\src\origin-engine`): `scripts/release.sh pack --target win32-x64`. It runs the unchanged native build/pack commands (`OG_RELEASE=1 sh packages/engine/scripts/build.sh --native` through `sh packages/engine/scripts/pack.sh --native`), never wasm.
+3. Each host uploads its own intermediates directly to private staging: `scripts/release.sh stage push --version <v> --revision <full-sha> --target <target>`. Set `OG_ENGINE_STAGING_URL` to the platform's staging base and `OG_ENGINE_STAGING_TOKEN` to that host's scoped credential. studio-win receives only a staging PUT credential for its version/commit/target, not SSH access, storage credentials or the publish token.
+4. In the orb, `scripts/release.sh stage pull --version <v> --revision <full-sha>` downloads all three packs, verifies their SHA-256 hashes and sizes, and rejects another commit. `archive` checks the records and bytes again. The minisign key stays in the orb for archive/sign.
+5. `scripts/release.sh previews <v> --check` checks the packed preview slots. Draw the shipping previews on Colab (`colab-gpu`, docs/ci.md §The GPU host) at the same commit using this pack's Linux og/addon; return `previews/` and `looks-render.json` to the orb. Then run `scripts/release.sh archive <v>`, `scripts/release.sh verify <v>` (full install test, not `--core`, host and container), `scripts/release.sh sign <v>`, and only with explicit release approval `scripts/release.sh publish <v>` using `OG_PLATFORM_ENGINE_UPLOAD_TOKEN`. Staging is not publication and never moves `latest`.
+6. Check the result as an author would: `curl -fsSL
    https://origingame.ai/downloads/engine/install.sh | sh`, `og new demo`,
    `og test .` in the new game; `latest/manifest.json` names `<v>`.
 
 A failure in `verify` is fixed on main and packed again; nothing is
-uploaded until every platform's archive passes. CI is never a
+published until every platform's archive passes. CI is never a
 precondition of a release. When a machine is unavailable,
 `.github/workflows/release.yml` (`workflow_dispatch`) does the same pack on
 GitHub-hosted runners, unsigned, and `scripts/release.sh fetch <run-id>`
@@ -411,16 +394,20 @@ brings it into the orb to archive and sign. `scripts/release.sh pack <version>`
 archives a version npm already carries from its published tarballs (the
 backfill).
 
-**The packing hosts.** Each keeps a checkout only for packing, with a
-target directory that is never cleaned, so a pack reuses every compiled
-dependency; sccache serves the rest. The toolchain is the pinned one
-(`docs/ci.md` §Toolchain). Two packs of the same commit give
-byte-identical tarballs.
+The workflow's `dev=true` option makes an uncommitted throwaway bump and uses `--dry-run`; its dirty records cannot be published. A shippable dev version needs its version inputs committed before packing, like a release.
 
-- **Mac** (macrunner): the worktree `/Volumes/app/origin-engine-release`
-  (branch `release`, tracking origin/main; `git pull` it to the release
-  commit) with its own `target/`. `pack` takes only that target's lock, so
-  it never waits on a gate in another checkout; run it under `nice -n 10`.
+**Private staging contract (platform-owned).** A base URL outside `/downloads/engine/` serves authenticated `PUT` and `GET` at `<base>/<version>/<full-commit>/<target>/<filename>`. Every object is private, including records. The platform validates the version, 40-character lowercase commit, one of the three targets and a basename from that target's allowlist (`scripts/release-stage.ts`, `packFiles`), plus `pack.json`. PUT carries `X-Content-SHA256` and raw bytes (`application/octet-stream`); the server verifies the digest before committing the object. A repeated identical PUT succeeds, a different digest at an existing key returns 409, a missing GET returns 404, invalid credentials return 401/403. No redirects. The server bounds object sizes (at least 210 MiB per tgz), streams to temporary storage, atomically commits, and expires throwaway prefixes by retention policy. No listing, SSH, public URLs, publish, promotion or `latest` mutation is part of this contract.
+
+`pack.json` is the last upload and completion marker: `{schema:1, version, revision, target, dirty, elapsedSeconds, files:{"<filename>":{sha256,size}}}`. The server validates its identity and complete file set against stored objects before accepting it. Linux owns its native tarball, engine/create-game/design tgz files, wasm-symbols tgz and `NOTES.md`; each other host owns only its native tgz. The orb's GET credential can read the exact version/commit prefix; each host's PUT credential is restricted to its own target there. These are separate from `OG_PLATFORM_ENGINE_UPLOAD_TOKEN`. The records stay local/private, never in the public manifest or checksum list. Dirty records propagate to `release.json`, so publication refuses them.
+
+**Signing.** Darwin binaries remain ad-hoc signed (`build.sh`, `codesign -s -`). Developer ID signing and notarization are deferred; no Apple certificate or signing secrets are required. The archive checksums are minisign-signed in the orb as before. The recorded sha256s bind the actual packed bytes.
+
+**Dry run.** Use an unused `dev.<YYYYMMDD>.<n>` only as a throwaway local version (`bun scripts/release-bump.ts --dev <v>` and `cargo update --workspace --offline` on each host), then `pack --target <target> --dry-run`. The uncommitted version bump marks these packs dirty and unpublishable. Run parallel packing, staging PUT/GET, archive and verify; never run `dev` (which publishes), `publish`, or move `latest`. A local authenticated staging stand-in checks the transport contract only, not OVH ingress/storage; repeat the round-trip on the platform endpoint before declaring that integration verified.
+
+**The packing hosts.** Keep one target directory per checkout and do not clean it; sccache serves reusable dependencies. The toolchain is pinned in `docs/ci.md` §Toolchain.
+
+- **Orb**: Linux native, wasm, common packages, final assembly, install verification, minisign and publish.
+- **Mac satellite**: darwin-arm64 native packing only. macrunner is a development host, not a release host.
 - **Windows** (studio-win): `E:\src\origin-engine` on a Dev Drive with
   `SCCACHE_DIR=E:\sccache`, excluded from Defender. Git Bash, PowerShell
   7, Rust (MSVC) and bun are on the PATH of the `win` account the Amp

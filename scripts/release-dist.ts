@@ -11,9 +11,10 @@
 //
 // <dir> (dist/release/<v>/) holds the npm-shaped tarballs packages/engine's
 // pack.sh writes: origingame-engine-<v>.tgz, origingame-engine-<platform>-<v>.tgz
-// (darwin-arm64 and linux-x64 from the Mac, win32-x64 copied in from
+// (linux-x64 from the orb, darwin-arm64 from its Mac satellite, win32-x64 from
 // studio-win), origingame-create-game-<v>.tgz and origingame-design-<v>.tgz.
-// They are build intermediates, never uploaded. `--registry` first downloads
+// Private staging carries these intermediates and each host's pack record;
+// only assembled archives reach the public channel. `--registry` first downloads
 // the ones a version published to npm before 2026-11-05 (every version from
 // 0.5.0 and 0.7.8-dev.17) from the registry, each checked against its
 // integrity there, so a backfilled archive carries the bytes that version
@@ -78,6 +79,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { MAX_ARCHIVE, archivePath, packArchive, type VfxEntry } from "../packages/engine/src/node/vfx-pack.ts";
 import { installers, pinnedKey } from "../packages/launcher/build.ts";
 import { VERSION_RE } from "../packages/launcher/og.ts";
+import { checkPacks, recordName, type PackRecord } from "./release-stage.ts";
 
 export const TARGETS = {
   "x86_64-unknown-linux-gnu": { platform: "linux-x64", tsrs: "linux-x64-gnu", exe: "og" },
@@ -86,7 +88,7 @@ export const TARGETS = {
 } as const;
 export type Target = keyof typeof TARGETS;
 /** A release `x.y.z`, a dev build `dev.<YYYYMMDD>.<n>` (docs/release.md §1a), or a dev build of the scheme before 0.9.0, `x.y.z-dev.n`. */
-export const VERSION_RE = /^(?:\d+\.\d+\.\d+(?:-dev\.\d+)?|dev\.\d{8}\.[1-9]\d*)$/;
+export { VERSION_RE };
 export const isDev = (v: string) => v.startsWith("dev.") || v.includes("-dev.");
 import { DOWNLOADS } from "../packages/engine/src/node/minisign.ts";
 export { DOWNLOADS };
@@ -323,9 +325,8 @@ function ensurePins(dir: string): string {
   return dir;
 }
 
-/** packages/vfx-packs/ as the version was built: the checkout's when packed here, else the revision's (none if it has none). */
-function vfxSource(revision: string, here: boolean, work: string): string {
-  if (here) return ensurePins(join(ROOT, "packages/vfx-packs"));
+/** packages/vfx-packs/ at the packed commit, never the assembling orb's working tree. */
+function vfxSource(revision: string, work: string): string {
   const to = join(work, "vfx-packs-src");
   mkdirSync(to, { recursive: true });
   try {
@@ -700,13 +701,13 @@ async function main() {
   for (const n of ["engine", "create-game"]) if (!existsSync(tgz(n))) die(`no ${tgz(n)}`);
   if (!targets.length) die(`no platform tarball in ${dir} (origingame-engine-<platform>-${version}.tgz)`);
 
-  // Packed here from the checkout (pack), or elsewhere (a workflow run: --revision), or published to npm (--registry).
-  const checkoutVersion = (JSON.parse(readFileSync(join(ROOT, "packages/engine/package.json"), "utf8")) as { version: string }).version;
-  const here = !registry && !opt("--revision") && version === checkoutVersion;
-  const revision = opt("--revision") ?? again?.revision ?? (here ? git("rev-parse", "HEAD") : revisionOf(version));
-  // Pinned assets are ignored by Git, so a pinned file that is not its pin is dirty too (scripts/assets.ts status).
-  const dirty = again ? again.dirty : here && (git("status", "--porcelain") !== ""
-    || spawnSync("bun", [join(ROOT, "scripts/assets.ts"), "status"], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] }).status !== 0);
+  // The records bind ALL hosts' payloads to one full commit, including common wasm/packages.
+  // Never infer a distributed build's revision or cleanliness from the coordinator checkout.
+  const packed = registry ? undefined : JSON.parse(readFileSync(join(dir, recordName("linux-x64")), "utf8")) as PackRecord;
+  const revision = opt("--revision") ?? packed?.revision ?? again?.revision ?? revisionOf(version);
+  if (!/^[a-f0-9]{40}$/.test(revision)) die("archive requires a full commit id");
+  const records = registry ? [] : checkPacks(dir, version, revision, targets.map((t) => TARGETS[t].platform));
+  const dirty = registry ? false : records.some((r) => r.dirty);
   const work = mkdtempSync(join(dir, ".work-"));
   try {
     // What every target shares, unpacked once.
@@ -730,7 +731,7 @@ async function main() {
       copyFileSync(source, join(common, "files", f.path));
     }
     mkdirSync(join(common, "files"), { recursive: true });
-    const vfx = writeVfxArchives(dir, version, vfxSource(revision, here, work));
+    const vfx = writeVfxArchives(dir, version, vfxSource(revision, work));
     // Before the archives are assembled: each target's engine names where its modules are served.
     const wasm = writeWasmModules(join(common, "engine"), dir, version);
     if (wasm.length) say(`${wasm.length} split engine module(s) under wasm/`);

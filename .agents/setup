@@ -96,10 +96,10 @@ if ! command -v cargo-nextest >/dev/null; then
   step curl -fsSL --retry 3 https://get.nexte.st/latest/linux -o "$tmp/nextest.tar.gz"
   step tar -xzf "$tmp/nextest.tar.gz" -C "$HOME/.local/bin" cargo-nextest
 fi
-# No release-packing tools (zig): orbs never pack, and its download is slow.
+# Orbs pack Linux (zig/glibc 2.31) and wasm; install the pinned packing tools too.
 # Each line is timestamped so setup.log shows which tool a slow run waited on.
 stamped() { "$@" 2>&1 | while IFS= read -r line; do printf '[%(%T)T] %s\n' -1 "$line"; done; }
-step stamped env OG_TOOLS_NO_PACKING=1 scripts/install-tools.sh
+step stamped scripts/install-tools.sh
 step cargo fetch --locked
 # The pinned binaries (og-assets.json) that tests compile in and the gate reads.
 step bun scripts/assets.ts ensure

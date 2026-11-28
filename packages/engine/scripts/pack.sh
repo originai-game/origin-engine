@@ -48,6 +48,8 @@ packed=""
 for addon in "$here"/native/origin-engine.*.node; do
   [ -f "$addon" ] || continue
   platform="$(basename "$addon" .node)"; platform="${platform#origin-engine.}"
+  # A target pack never picks up another platform left by an earlier build.
+  [ -z "${OG_PACK_TARGET:-}" ] || [ "$platform" = "$OG_PACK_TARGET" ] || continue
   os="${platform%-*}"; cpu="${platform#*-}"
   name="@origingame/engine-$platform"
   stage="$out/stage/engine-$platform"

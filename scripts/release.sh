@@ -10,15 +10,17 @@
 #                                               which folds changelog/unreleased/ into changelog.json first), Cargo.lock through cargo update
 #   scripts/release.sh fold                     fold changelog/unreleased/'s fragments into changelog.json's unreleased (scripts/changelog.ts);
 #                                               run it at any time between releases, and commit the result
-#   scripts/release.sh pack [<version>]         the checkout's version (no argument): OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64
-#                                               (the engine with its knowledge/, this machine's platform package and linux-x64's), then
-#                                               create-game and design, as npm-shaped tarballs in dist/release/<version>/ with NOTES.md
-#                                               (the release notes, from changelog.json), then `previews --check`, then `archive`.
-#                                               Run on the Mac (docs/release.md §3); studio-win adds win32-x64's tarball (`build.sh --native`,
-#                                               `pack.sh --native`, copied into dist/release/<version>/), then `archive` again.
+#   scripts/release.sh pack --target <target> [--dry-run]
+#                                               linux-x64: orb builds zig/glibc 2.31, wasm, engine/create-game/design;
+#                                               darwin-arm64: Mac satellite builds native (ad-hoc signed as before);
+#                                               win32-x64: studio-win builds native only. No archive or publish.
+#                                               --dry-run permits a throwaway version bump in a dirty tree; publish refuses it.
 #                                               `pack <version>` (a version npm carries: every one from 0.5.0, and 0.7.8-dev.17): its
 #                                               published tarballs, downloaded from the registry with their integrity checked, then
 #                                               archived: the bytes that version shipped with (the backfill, docs/release.md §3)
+#   scripts/release.sh stage push|pull --version <v> --revision <full-sha> [--target <target>] [--dir <dir>]
+#                                               private staging transport; OG_ENGINE_STAGING_URL and OG_ENGINE_STAGING_TOKEN.
+#                                               push needs a target-scoped upload credential; pull runs only in the orb.
 #   scripts/release.sh archive [<version>]      scripts/release-dist.ts over dist/release/<version>/: an archive per target whose platform
 #                                               tarball is there, manifest.json, SHA256SUMS, and SHA256SUMS.minisig when
 #                                               OG_ENGINE_MINISIGN_KEY (the project secret) is set; release.json is the local record
@@ -29,7 +31,7 @@
 #                                               then `archive` again, which ships them (docs/release.md §1 The looks)
 #   scripts/release.sh previews [<version>] --check
 #                                               every slot the same way with this machine's platform tarball on any adapter, no previews
-#                                               written: pack runs it, so a slot that fails to cook or run stops the pack, not the GPU host
+#                                               written: run before archive, so a slot that fails to cook or run is caught before the GPU host
 #   scripts/release.sh sign [<version>]         manifest.json, the version's install.sh and install.ps1, SHA256SUMS and its signature
 #                                               again over the archives in place (OG_ENGINE_MINISIGN_KEY); the install test's passes stand
 #   scripts/release.sh fetch <run-id>           download the release workflow run's `release-<version>` artifact (gh run download) into
@@ -86,8 +88,8 @@ cmd_bump() {
 }
 
 cmd_pack() {
-  local v out
-  if [ -n "${1:-}" ]; then
+  local v out target="" dry=0 start=$SECONDS revision dirty=() before
+  if [ -n "${1:-}" ] && [[ "$1" != --* ]]; then
     # A version npm carries (published before 2026-11-05): its tarballs from the registry.
     v="$1"; out="$(out_dir "$v")"
     og_say "release: archiving $v's published packages"
@@ -95,22 +97,43 @@ cmd_pack() {
     bun scripts/release-dist.ts "$out" --version "$v" --registry || return 1
     return 0
   fi
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="${2:-}"; [ "$#" -ge 2 ] || return 2; shift 2 ;;
+      --dry-run) dry=1; shift ;;
+      *) og_err "release: pack takes --target linux-x64|darwin-arm64|win32-x64 [--dry-run]"; return 2 ;;
+    esac
+  done
+  local host
+  host="$(bun -e 'console.log(process.platform + "-" + process.arch)')"
+  case "$target" in linux-x64|darwin-arm64|win32-x64) ;; *) og_err "release: pack requires --target linux-x64|darwin-arm64|win32-x64"; return 2 ;; esac
+  [ "$host" = "$target" ] || { og_err "release: $target packs on its own host, not $host"; return 1; }
+  revision="$(git rev-parse --verify HEAD)" || return 1
+  [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { og_err "release: pack requires a full Git commit"; return 1; }
+  before="$(git diff HEAD --binary | git hash-object --stdin)"
+  if [ -n "$(git status --porcelain)" ]; then
+    [ "$dry" = 1 ] || { og_err "release: pack requires a clean tree (--dry-run permits a throwaway bump)"; return 1; }
+    dirty=(--dirty)
+  fi
   v="$(checkout_version)"; out="$(out_dir "$v")"
   cmd_check || return 1
-  rm -rf "$out"; mkdir -p "$out"
+  mkdir -p "$out"
+  rm -f "$out/pack-$target.json" "$out/origingame-engine-$target-$v.tgz"
   # A dev build has no versions entry (release-bump.ts --dev): its notes are unreleased's.
   local notes_of=("$v")
   case "$v" in dev.* | *-dev.*) notes_of=() ;; esac
-  bun scripts/changelog.ts notes "${notes_of[@]}" > "$out/NOTES.md" || { og_err "release: changelog.json has no $v entry for the release notes; run scripts/release.sh bump $v"; return 1; }
-  og_say "release: packing $v into ${out#"$OG_ROOT"/}/"
-  (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
+  og_say "release: packing $v $target at $revision into ${out#"$OG_ROOT"/}/"
+  local build_args=(--native)
+  [ "$target" != linux-x64 ] || build_args=(--linux-x64)
+  (cd packages/engine && OG_PACK_TARGET="$target" sh scripts/pack.sh "${build_args[@]}") || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
-  (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/create-game failed"; return 1; }
-  (cd packages/design && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/design failed"; return 1; }
-  # Every preview slot cooked and run by the packed og, in the packed layout (`previews --check`).
-  cmd_previews "$v" --check || return 1
-  cmd_archive "$v" || return 1
-  [ -f "$out/origingame-engine-win32-x64-$v.tgz" ] || og_say "release: now win32-x64 from studio-win (docs/release.md §3), copied into ${out#"$OG_ROOT"/}/, then scripts/release.sh archive"
+  if [ "$target" = linux-x64 ]; then
+    bun scripts/changelog.ts notes "${notes_of[@]}" > "$out/NOTES.md" || return 1
+    (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || return 1
+    (cd packages/design && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || return 1
+  fi
+  [ "$(git diff HEAD --binary | git hash-object --stdin)" = "$before" ] || { og_err "release: tracked inputs changed during packing; discard this pack"; return 1; }
+  bun scripts/release-stage.ts record --version "$v" --revision "$revision" --target "$target" --elapsed "$((SECONDS - start))" "${dirty[@]}"
 }
 
 cmd_archive() {
@@ -313,6 +336,7 @@ cmd_dev() {
   if [ "$tmp" != "$out" ]; then
     rm -rf "$out"; mkdir -p "$out"
     cp "$tmp"/origingame-*-"$v".tgz "$out/" || return 1
+    cp "$tmp"/pack-*.json "$tmp/NOTES.md" "$out/" || return 1
     # The previews the GPU host drew for these tarballs (scripts/release.sh previews), when they came with them.
     if [ -f "$tmp/looks-render.json" ]; then cp -R "$tmp/previews" "$tmp/looks-render.json" "$out/" || return 1; fi
   fi
@@ -329,6 +353,7 @@ case "$verb" in
   bump) cmd_bump "$@" ;;
   fold) bun scripts/changelog.ts fold ;;
   pack) cmd_pack "$@" ;;
+  stage) bun scripts/release-stage.ts "$@" ;;
   archive) cmd_archive "$@" ;;
   previews) cmd_previews "$@" ;;
   sign) cmd_sign "$@" ;;
