@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "setShellArt",
+      "change": "Removed from the scaffold's shell. The shell loads its art at start from two content slots: key art `content/ui/key-art.ts` (ID base/ui/key-art, a texture import of assets/ui/key-art.png, 16:9 at 1920x1080, 9:16 for a phone) and the logo `content/ui/logo.ts` (base/ui/logo, assets/ui/logo.png, transparent, about 1200x500); SHELL_ART in src/shell-state.ts lists them with their artBrief kinds. An undeclared slot falls back to the pack's backdrop and the game's name as its wordmark.",
+      "fix": "Delete the setShellArt call and declare the images at those content paths instead."
+    }
+  ]
+}

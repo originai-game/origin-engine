@@ -1,4 +1,4 @@
-// Customize copy in content/strings/; give the title and main menu key art and a logo with setShellArt.
+// Customize copy in content/strings/; the menus' key art and logo are the art slots in shell-state.ts (SHELL_ART).
 // Keep the built-in screens: they supply responsive layout, focus and input semantics.
 import { og, type World, type Texture } from "@origingame/engine";
 import { View, Text, Show, mount, useStore, t, formatDuration } from "@origingame/engine/ui";

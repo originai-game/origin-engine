@@ -36,7 +36,10 @@ the first requested language. Settings apply immediately and persist through
 og.platform; progress uses the `progress` slot. Start initializes gameplay
 before startShell captures the New game reset point. Rebuilding the entire
 screen in View/Text is unnecessary: change strings, and give the title and
-main menu key art and a logo with `setShellArt`. See the start guide §1/§2 for the author workflow.
+main menu key art and a logo by declaring `content/ui/key-art.ts` and
+`content/ui/logo.ts` (texture imports of `assets/ui/key-art.png` and
+`assets/ui/logo.png`); without them the menus stand on the UI pack's
+backdrop under the game's name as a wordmark. See the start guide §1/§2 for the author workflow.
 
 ## Options and return value
 

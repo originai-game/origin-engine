@@ -27,7 +27,7 @@ export function shellStores(world: World) {
     played: scope.writable("played", 0),
     // The saved slot's meta, for Continue and the slot row.
     slot: scope.writable("slot", { played: 0 }),
-    // The title's and main menu's key art and logo (0: none).
+    // The menus' key art and logo from the art slots (SHELL_ART; 0: none, the pack's fallback).
     art: scope.writable("art", { keyArt: 0, logo: 0 }),
     // The question the Confirm dialog asks ("" closed, "quit-to-menu").
     confirm: scope.writable("confirm", ""),
@@ -52,14 +52,25 @@ function must<T>(result: Result<T>): T {
 }
 
 /**
- * Give the menus their art, in GameDesc.start before startShell: `keyArt` and
- * `logo` are og.load.texture handles (0: none). Without key art the title and
- * main menu stand on whatever the game draws, its scene included; paused
- * menus stand on the frozen game frame.
+ * The shell's art slots: each a texture declared at its content path, which the
+ * shell loads at start. Replace an image by replacing its file under assets/,
+ * or point the declaration at another file. A slot with no declaration falls
+ * back to the UI pack's designed backdrop (key art) or the game's name set as
+ * the pack's wordmark (logo). `brief` is the art kind packages/knowledge's
+ * artBrief takes for it.
+ *
+ *   keyArt  content/ui/key-art.ts  assets/ui/key-art.png  16:9 1920x1080 (9:16 1080x1920 for a phone)
+ *   logo    content/ui/logo.ts     assets/ui/logo.png     transparent, about 1200x500
  */
-export function setShellArt(world: World, art: { keyArt?: number; logo?: number }) {
-  const s = shellStores(world);
-  must(s.art.set({ ...s.scope.get(s.art), ...art }));
+export const SHELL_ART = {
+  keyArt: { id: "base/ui/key-art", brief: "keyArt" },
+  logo: { id: "base/ui/logo", brief: "logo" },
+} as const;
+
+/** A slot's texture, or 0 when the project declares none (literal IDs, so the build keeps exactly these). */
+function shellArt(world: World) {
+  const keyArt = og.load.texture(world, "base/ui/key-art"), logo = og.load.texture(world, "base/ui/logo");
+  return { keyArt: keyArt.ok ? (keyArt.value as unknown as number) : 0, logo: logo.ok ? (logo.value as unknown as number) : 0 };
 }
 
 export function sendShell(world: World, action: string, value = "") {
@@ -96,6 +107,7 @@ export function startShell(world: World) {
   og.i18n.setLocale(world, shellConfig.lang[0]!);
   must(og.input.defineAction(world, { name: "shell.pause", kind: "button", actionMap: "shell", locked: true,
     bindings: shellConfig.input === "gamepad" ? [{ control: "pad.start" }, { control: "Escape" }] : [{ control: "Escape" }, { control: "pad.start" }] }));
+  must(shellStores(world).art.set(shellArt(world)));
   navigate(world, "title");
   shellReset(world, must(world.snapshot()));
   const s = shellStores(world);

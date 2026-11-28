@@ -17,6 +17,15 @@ write Rust or `.ogt` files.
 - `tests/*.og.ts`: playtests.
 - `.og/`, `cooked/`, `og-out/`, `dist/` are generated; do not edit them.
 
+## Menu art
+
+The title, main menu, loading and credits screens read two art slots at start:
+
+- key art: `content/ui/key-art.ts` = `file.import({ kind: "texture", source: "assets/ui/key-art.png" })`, 16:9 at 1920x1080 (9:16 for a phone game); brief kind `keyArt`.
+- logo: `content/ui/logo.ts` = `file.import({ kind: "texture", source: "assets/ui/logo.png" })`, transparent, about 1200x500; brief kind `logo`.
+
+Replace an image by replacing its file. With no declaration the screens use the UI pack's backdrop and set the game's name as its wordmark; no code is needed either way.
+
 ## Finding the API
 
 Look things up when you need them instead of guessing:
