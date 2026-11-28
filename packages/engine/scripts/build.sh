@@ -83,7 +83,7 @@ platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -
 host_build=1
 [ "$linux_x64" = 1 ] && [ "$platform" = linux-x64 ] && [ "${OG_GATE:-}" != 1 ] && host_build=0
 if [ "${OG_GATE:-}" = 1 ]; then
-  # Under the gate, rust-build (scripts/gate/native.py) built the dev addon
+  # Under the gate, rust-build (scripts/gate/native.ts) built the dev addon
   # and og before any step that runs this one: OG_GATE_RAN records that
   # success. Avoid re-linking og while other gate steps run it. OG_GATE=1
   # alone selects dev mode, not freshness; standalone builds still compile.

@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const script = join(import.meta.dir, "inputs.py");
+const script = join(import.meta.dir, "inputs.ts");
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true });
@@ -58,14 +58,14 @@ function workspace() {
   const env = (tree: string) =>
     ({ ...process.env, GATE_LOGS: root, OG_TARGET_DIR: join(root, "target"), OG_GATE_TREE: tree, FORCE_ALL: "0" });
   const inputs = (name: string) =>
-    spawnSync("python3", [script, "crates", name], { cwd: root, encoding: "utf8", env: env(green) }).stdout.trim().split(" ");
+    spawnSync("bun", [script, "crates", name], { cwd: root, encoding: "utf8", env: env(green) }).stdout.trim().split(" ");
   return {
     crates: inputs,
     /** Of `changes`, each made alone, the files that leave og-c's tests skipped. */
     async skipsAfter(changes: string[]) {
       const paths = inputs("og-c");
       const codes = await Promise.all(changes.map((file) =>
-        Bun.spawn(["python3", script, "unchanged", "key", ...paths], { cwd: root, env: env(changed(file)) }).exited));
+        Bun.spawn(["bun", script, "unchanged", "key", ...paths], { cwd: root, env: env(changed(file)) }).exited));
       return changes.filter((_, index) => codes[index] === 0);
     },
   };
@@ -95,10 +95,10 @@ test("after a failed run only the binaries that ran every test and failed none a
   writeFileSync(join(root, "junit.xml"),
     `<testsuites>${suite("og-a::tests", 0, 3)}${suite("og-b::tests", 1, 3)}${suite("og-c::tests", 0, 2)}</testsuites>`);
   const expected = { "og-a::tests": 3, "og-b::tests": 3, "og-c::tests": 3, "og-d::tests": 1 };
-  const run = spawnSync("python3", ["-c",
-    `import json, native; print(json.dumps(sorted(native.passed('junit.xml', ${JSON.stringify(expected)}))))`], {
+  const run = spawnSync("bun", ["-e",
+    `import { passed } from ${JSON.stringify(join(import.meta.dir, "native.ts"))}; console.log(JSON.stringify([...passed('junit.xml', ${JSON.stringify(expected)})].sort()))`], {
     cwd: root, encoding: "utf8",
-    env: { ...process.env, PYTHONPATH: import.meta.dir, GATE_LOGS: root, OG_TARGET_DIR: join(root, "target") },
+    env: { ...process.env, GATE_LOGS: root, OG_TARGET_DIR: join(root, "target") },
   });
   // og-b failed a test, og-c stopped before its third, og-d never started.
   expect(JSON.parse(run.stdout)).toEqual(["og-a::tests"]);

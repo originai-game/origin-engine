@@ -33,7 +33,7 @@ passing prefix and hands the first failing head back with a marker in
 `og-landing/failed/`. Main is pushed only after quick passed on exactly the
 pushed tree, never with a force push. A head whose tree passed the whole
 `full` lane with `--all` (the record `target/og-gate/green/lane.full`,
-which `scripts/gate/run.py` writes only when every step ran and passed)
+which `scripts/gate/run.ts` writes only when every step ran and passed)
 skips the opening quick; the recheck still runs what a rebase changed.
 The queue does not span orbs: when a lander elsewhere pushes first, the
 push is retried on the new main, without a gate when what landed and the
@@ -41,7 +41,7 @@ head's changes are both prose only (docs, tasks, changelog fragments,
 README, AGENTS — nothing a quick step reads) and after a recheck otherwise,
 until it lands or the recheck fails. Conflicts confined to generated
 files (`og_idl::OUTPUT_DIRS`) are regenerated; the recheck then runs the
-steps this changed. Any other conflict stops for the author. `python3 scripts/test-landing.py` exercises
+steps this changed. Any other conflict stops for the author. `bun test ./scripts/test-landing.ts` exercises
 concurrent landings against a disposable bare remote.
 
 ## Toolchain
@@ -113,8 +113,7 @@ is judged against `references/vulkan/` (§Reference frames). `og check` and
 the package's typecheck use the pinned tsgo, since tsrs has no Windows
 package. The Windows release package is built as docs/release.md §3 says.
 
-To run the gate on studio-win, also put Python 3.12 with numpy and Pillow
-(as `python3`), cargo-nextest and Bun on Git Bash's PATH, and point
+To run the gate on studio-win, put cargo-nextest and Bun on Git Bash's PATH, and point
 `CHROME` at Chrome for Testing. Native GPU steps use DX12 on the NVIDIA
 driver (`OG_GFX_BACKEND=vulkan` for Vulkan), never WARP.
 
@@ -320,7 +319,7 @@ that depend on it still run. A landing's quick (`OG_GATE_LANDING=1`, set by
 `scripts/land.sh`) refuses any skip but `rust-gpu`: a landing must run every
 step it would push, so a tree a cold run fails cannot land on main.
 
-`scripts/check.sh` owns admission, `scripts/gate/run.py` schedules the
+`scripts/check.sh` owns admission, `scripts/gate/run.ts` schedules the
 dependency DAG, and `step.sh` takes GPU slots only for rendering steps.
 Native test binaries are built and listed once; CPU and GPU executions
 reuse them. The run's `timings.json` records step start, outer resource
@@ -350,7 +349,7 @@ package's workspace crates, every path under `crates/` its Rust sources
 name as `../og-x/...` or `crates/og-x/...`, and, for og-cli alone,
 og-host-node. A Rust test outside og-cli that runs `og`, or one that reads
 another crate's `.rs` file without naming its path that way, must be added
-to `RUNS` in `scripts/gate/inputs.py`. An unchecked GPU run never creates
+to `RUNS` in `scripts/gate/inputs.ts`. An unchecked GPU run never creates
 a passing record.
 
 `rust-gpu` runs its tests with `OG_RENDERER=hardware` unless the

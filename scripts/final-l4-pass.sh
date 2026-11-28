@@ -48,10 +48,10 @@ bundle() {
   local pkg exe
   for pkg in og-render og-runtime og-tests og-tests-cooked; do
     exe="$(cargo test -q -p "$pkg" --test tests --no-run --message-format=json 2>/dev/null \
-      | python3 -c 'import json,sys
-for l in sys.stdin:
-  m=json.loads(l)
-  if m.get("reason")=="compiler-artifact" and m.get("executable") and m["target"]["kind"]==["test"]: print(m["executable"])' | tail -1)"
+      | bun -e 'for (const line of (await Bun.stdin.text()).trim().split("\n").filter(Boolean)) {
+  const m = JSON.parse(line);
+  if (m.reason === "compiler-artifact" && m.executable && JSON.stringify(m.target.kind) === "[\"test\"]") console.log(m.executable);
+}' | tail -1)"
     [ -n "$exe" ] || die "bundle: no test binary for $pkg"
     cp "$exe" "$b/bin/t/deps/$pkg-tests"
   done
@@ -78,24 +78,24 @@ for l in sys.stdin:
   # also goes up as parts of at most 80 MB each, hard links into it, which assemble puts together.
   local parts="$b.parts"
   rm -rf "$parts"
-  python3 - "$b" "$parts" <<'PY'
-import os, sys
-b, parts = sys.argv[1], sys.argv[2]
-files = []
-for r, _, fs in os.walk(b):
-    for f in fs:
-        p = os.path.join(r, f); files.append((os.path.relpath(p, b), os.path.getsize(p)))
-groups, cur, size = [], [], 0
-for rel, n in sorted(files, key=lambda x: -x[1]):
-    if cur and size + n > 80 << 20: groups.append(cur); cur, size = [], 0
-    cur.append(rel); size += n
-groups.append(cur)
-for i, g in enumerate(groups):
-    for rel in g:
-        d = os.path.join(parts, f"p{i:02d}", os.path.dirname(rel)); os.makedirs(d, exist_ok=True)
-        os.link(os.path.join(b, rel), os.path.join(parts, f"p{i:02d}", rel))
-print(f"final-l4-pass: {len(groups)} parts in {parts}")
-PY
+  bun - "$b" "$parts" <<'TS'
+import { statSync, mkdirSync, linkSync } from "node:fs";
+import { join, dirname } from "node:path";
+const [b, parts] = process.argv.slice(2);
+const files = [...new Bun.Glob("**/*").scanSync({cwd:b, dot:true, onlyFiles:false, followSymlinks:false})]
+  .filter(name => !statSync(join(b, name)).isDirectory()).map(name => [name, statSync(join(b, name)).size]);
+const groups = []; let cur = [], size = 0;
+for (const [rel, n] of files.sort((a, b) => b[1] - a[1])) {
+  if (cur.length && size + n > (80 << 20)) { groups.push(cur); cur = []; size = 0; }
+  cur.push(rel); size += n;
+}
+groups.push(cur);
+for (const [i, group] of groups.entries()) for (const rel of group) {
+  const dest = join(parts, `p${String(i).padStart(2, "0")}`, rel);
+  mkdirSync(dirname(dest), {recursive:true}); linkSync(join(b, rel), dest);
+}
+console.log(`final-l4-pass: ${groups.length} parts in ${parts}`);
+TS
   echo "final-l4-pass: next: colab_gpu_sync the checkout, then each $parts/pNN (repo final-l4-pNN), then on the host: scripts/final-l4-pass.sh assemble /content/work /content/work/final-l4-bundle, then run"
 }
 
@@ -195,31 +195,40 @@ sec_fused() {
     local w="$OUT/fused/$route" p; p="$(mktemp -d)"
     mkdir -p "$w"; cp -r "$src/." "$p/"; rm -rf "$p/cooked" "$p/.og"
     local cmds
-    cmds="$(python3 -c "
-import sys
-end=float(sys.argv[2]); s=[f'{t/60:.4f}:dump_flow:f{t:04d}.json' for t in range(1,int(end*60))]
-s+=sys.argv[1].split(';'); s.sort(key=lambda x: float(x.split(':')[0])); print(';'.join(s+[f'{end+0.1}:quit']))" "$keys" "$end")"
+    # shellcheck disable=SC2016 # JavaScript template literals, not shell expansion.
+    cmds="$(bun -e '
+const [keys, end] = [process.argv[1], Number(process.argv[2])];
+const s = Array.from({length:Math.trunc(end*60)-1}, (_, i) => {
+  const t=i+1; return `${(t/60).toFixed(4)}:dump_flow:f${String(t).padStart(4,"0")}.json`;
+});
+s.push(...keys.split(";")); s.sort((a,b) => parseFloat(a)-parseFloat(b));
+console.log([...s, `${end+0.1}:quit`].join(";"));' "$keys" "$end")"
     (cd "$p" && "$BUNDLE/bin/og" run . --headless --no-check --size "$size" --out "$w/dumps" --commands "$cmds") > "$w/dumps.log" 2>&1 \
       || { fail fused "$route: the flow run failed (fused/$route/dumps.log)"; continue; }
     # Cut ticks: the first tick whose dump names a new node.
     local cuts
-    cuts="$(python3 -c "
-import json,os,sys
-d=sys.argv[1]; prev=None; out=[]
-for f in sorted(x for x in os.listdir(d) if x.startswith('f') and x.endswith('.json')):
-  t=int(f[1:5]); n=(json.load(open(os.path.join(d,f))).get('flows') or [{}])[0].get('node')
-  if n!=prev: out.append(f'{t}:{n}'); prev=n
-print(' '.join(out))" "$w/dumps")"
+    # shellcheck disable=SC2016 # JavaScript template literals.
+    cuts="$(bun -e '
+import {readFileSync,readdirSync} from "node:fs"; import {join} from "node:path";
+const d=process.argv[1], out=[]; let prev=null;
+for (const f of readdirSync(d).filter(f=>f.startsWith("f")&&f.endsWith(".json")).sort()) {
+  const t=Number(f.slice(1,5)), flows=JSON.parse(readFileSync(join(d,f),"utf8")).flows;
+  const n=(flows?.length ? flows[0] : {}).node ?? null;
+  if(n!==prev) {out.push(`${t}:${n===null ? "None" : n}`); prev=n;}
+}
+console.log(out.join(" "));' "$w/dumps")"
     echo "$cuts" > "$w/cuts.txt"
     note "fused $route: cuts $cuts"
     [ -n "$cuts" ] || { fail fused "$route: no cut found in the flow dumps"; continue; }
-    cmds="$(python3 -c "
-import sys
-ts=set([30])
-for c in sys.argv[2].split():
-  t=int(c.split(':')[0]); ts.update(range(max(1,t-2),t+4))
-s=[f'{t/60:.4f}:screenshot:t{t:04d}.png' for t in sorted(ts)]+sys.argv[1].split(';')
-s.sort(key=lambda x: float(x.split(':')[0])); print(';'.join(s+[f'{max(ts)/60+0.2:.4f}:quit']))" "$keys" "$cuts")"
+    # shellcheck disable=SC2016 # JavaScript template literals.
+    cmds="$(bun -e '
+const ts=new Set([30]);
+for(const c of process.argv[2].split(/\s+/).filter(Boolean)) {
+  const t=Number(c.split(":")[0]); for(let i=Math.max(1,t-2); i<t+4; i++) ts.add(i);
+}
+const s=[...ts].sort((a,b)=>a-b).map(t=>`${(t/60).toFixed(4)}:screenshot:t${String(t).padStart(4,"0")}.png`);
+s.push(...process.argv[1].split(";")); s.sort((a,b)=>parseFloat(a)-parseFloat(b));
+console.log([...s, `${(Math.max(...ts)/60+0.2).toFixed(4)}:quit`].join(";"));' "$keys" "$cuts")"
     rm -rf "$p/cooked" "$p/.og"
     (cd "$p" && "$BUNDLE/bin/og" run . --headless --no-check --size "$size" --out "$w/shots" --commands "$cmds") > "$w/shots.log" 2>&1 \
       || { fail fused "$route: the capture run failed (fused/$route/shots.log)"; continue; }
@@ -312,11 +321,9 @@ sec_web_compat() {
     (cd "$e" && OG_L4_COMPAT=0 OG_L4_CHROME_LOG="$w/tier-$p-chrome.log" timeout 600 bun tests/web/reference.ts \
       --project "tests/fixtures/$p" --playtest "tests/$t.og.ts" --tier compat --chrome "$chrome" --out "$w/tier-$p") > "$w/tier-$p.log" 2>&1; rc=$?
     errs="$(cat "$w/tier-$p-chrome.log" 2>/dev/null | grep -c '\[og\] WebGPU error:')"
-    note "web-compat tier $p: $([ "$rc" = 0 ] && echo PASS || echo "FAIL exit $rc"), $errs WebGPU errors, rmse $(python3 -c '
-import json,sys
-try: r=json.load(open(sys.argv[1]))
-except Exception: print("none"); sys.exit()
-print(" ".join(k+"="+str(v.get("rmse")) for k,v in (r.get("stations") or {}).items()) or "none", r.get("renderer") or "")' "$w/tier-$p/reference-webgpu.json")"
+    note "web-compat tier $p: $([ "$rc" = 0 ] && echo PASS || echo "FAIL exit $rc"), $errs WebGPU errors, rmse $(bun -e '
+let r; try {r=await Bun.file(process.argv[1]).json();} catch {console.log("none"); process.exit();}
+console.log(Object.entries(r.stations??{}).map(([k,v])=>k+"="+(v.rmse??"None")).join(" ")||"none", r.renderer||"");' "$w/tier-$p/reference-webgpu.json")"
     [ "$rc" = 0 ] || fail web-compat "tier $p: exit $rc$([ "$rc" = 124 ] && echo ' (hung)') (web-compat/tier-$p.log)"
     [ "$errs" = 0 ] || fail web-compat "tier $p: $errs WebGPU validation errors (web-compat/tier-$p-chrome.log)"
   done
@@ -355,11 +362,17 @@ sec_filters() {
   (cd "$p" && OG_NATIVE_ADDON="$BUNDLE/bin/og-addon.node" "$BUNDLE/bin/og" cost . --json --runs 8 --ticks "60..$end" \
     --on "--commands 0.02:scene:hud" --off "--commands 0.02:scene:hud:plain" -- --headless --no-check --size 1920x1080 --ticks $((end + 20))) > "$w/cost.json" 2> "$w/cost.log"
   local rc=$? ms
-  ms="$(python3 -c 'import json,sys
-try: r=json.load(open(sys.argv[1]))
-except Exception: sys.exit()
-v=(r.get("cost") or {}).get("median")
-print("" if v is None else round(v, 3))' "$w/cost.json")"
+  ms="$(bun -e '
+let r; try {r=await Bun.file(process.argv[1]).json();} catch {process.exit();}
+const v=r.cost?.median;
+if(v==null) console.log("");
+else {
+  // toFixed rounds binary64 like the former formatter, except exact ties:
+  // at three places a representable tie is an odd multiple of 1/16.
+  const rounded = v*16===Math.trunc(v*16) && Math.abs(v*16)%2===1
+    ? Math.round(v*1000/2)*2/1000 : Number(v.toFixed(3));
+  console.log(Number.isInteger(rounded) ? rounded.toFixed(1) : rounded);
+}' "$w/cost.json")"
   note "filters: cost at 1920x1080 $([ -n "$ms" ] && echo "$ms ms, median GPU frame with filters less without (budget $FILTER_BUDGET_MS; range and load in filters/cost.json)" || echo "unmeasured (exit $rc, filters/cost.log)")"
   if [ -z "$ms" ]; then fail filters "cost: og cost gave no difference (exit $rc, filters/cost.log)"
   elif awk -v m="$ms" -v b="$FILTER_BUDGET_MS" 'BEGIN { exit !(m > b) }'; then fail filters "cost: the filters take $ms ms at 1080p, over the $FILTER_BUDGET_MS ms budget"

@@ -139,7 +139,7 @@ echo 'ok   landings build only development wasm; references build the publish an
 # OG_GATE_SKIP drops named steps: an unknown name fails before anything runs,
 # and a skipped step is printed and summarised as not run, never as a pass.
 printf '%s\n' '#!/usr/bin/env bash' '[ "$1" = metadata ] && { echo "{}"; exit 0; }' 'exit 97' > "$scratch/bin/cargo"
-skip_run() (cd "$root" && OG_GATE_SKIP="$1" OG_EVIDENCE_DIR="$scratch/skip" PATH="$scratch/bin:$PATH" python3 scripts/gate/run.py --only "$2" 2>&1)
+skip_run() (cd "$root" && OG_GATE_SKIP="$1" OG_TARGET_DIR="$scratch/skip-target" OG_EVIDENCE_DIR="$scratch/skip" PATH="$scratch/bin:$PATH" bun scripts/gate/run.ts --only "$2" 2>&1)
 out="$(skip_run fmt,no-such-step fmt)" && { echo 'FAIL OG_GATE_SKIP accepted an unknown step'; exit 1; }
 case "$out" in *no-such-step*) ;; *) echo "FAIL OG_GATE_SKIP's refusal does not name the step: $out"; exit 1 ;; esac
 out="$(skip_run ' clippy,fmt' clippy)" || { echo "FAIL OG_GATE_SKIP run: $out"; exit 1; }
@@ -157,17 +157,17 @@ resume_guard() (
   export GATE_LOGS="$scratch/resume/100-1" OG_GATE_RESUME=""
   mkdir -p "$GATE_LOGS" "$scratch/resume/200-1" || exit 1
   local key other helper
-  helper="$root/scripts/gate/continuation.py"
+  helper="$root/scripts/gate/continuation.ts"
   key="$(printf '%064d' 1)"; other="$(printf '%064d' 2)"
-  python3 "$helper" pass browser run "$key" || exit 1
-  GATE_LOGS="$scratch/resume/200-1" python3 "$helper" reuse browser run "$key" && exit 1
+  bun "$helper" pass browser run "$key" || exit 1
+  GATE_LOGS="$scratch/resume/200-1" bun "$helper" reuse browser run "$key" && exit 1
   export OG_GATE_RESUME=100-1 GATE_LOGS="$scratch/resume/200-1"
-  python3 "$helper" reuse browser run "$other" && exit 1
-  python3 "$helper" reuse browser player "$key" && exit 1
-  python3 "$helper" reuse browser run "$key" || exit 1
+  bun "$helper" reuse browser run "$other" && exit 1
+  bun "$helper" reuse browser player "$key" && exit 1
+  bun "$helper" reuse browser run "$key" || exit 1
   cmp "$GATE_LOGS/browser-run.receipt" "$scratch/resume/100-1/browser-run.receipt" || exit 1
   local out
-  out="$(cd "$root" && python3 scripts/gate/run.py --all --resume 100-1 2>&1)" && exit 1
+  out="$(cd "$root" && bun scripts/gate/run.ts --all --resume 100-1 2>&1)" && exit 1
   [[ "$out" == *'incompatible with a fresh forced run'* ]]
 )
 resume_guard || { echo 'FAIL continuation receipt guards'; exit 1; }
@@ -203,13 +203,13 @@ echo 'ok   cleaner removes idle nested incrementals without crossing lock or sym
 
 product_guard() (
   export OG_TARGET_DIR="$scratch/products"
-  local helper="$root/scripts/gate/wasm-products.py" out="$scratch/bound" raw="$scratch/raw.wasm"
+  local helper="$root/scripts/gate/wasm-products.ts" out="$scratch/bound" raw="$scratch/raw.wasm"
   printf 'input\n' > "$raw"
   printf '#!/bin/sh\nexit 0\n' > "$scratch/bin/wasm-bindgen"
   chmod +x "$scratch/bin/wasm-bindgen" || exit 1
   export PATH="$scratch/bin:$PATH"
   build_product() {
-    python3 "$helper" bindgen test "$raw" "$out" sh -c 'mkdir -p "$1"; cp "$2" "$1/glue.wasm"; echo built >> "$3"' \
+    bun "$helper" bindgen test "$raw" "$out" sh -c 'mkdir -p "$1"; cp "$2" "$1/glue.wasm"; echo built >> "$3"' \
       sh "$out" "$raw" "$scratch/builds"
   }
   build_product && rm -rf "$out" && build_product && cmp "$raw" "$out/glue.wasm" || exit 1
@@ -224,21 +224,20 @@ product_guard || { echo 'FAIL wasm product cache guards'; exit 1; }
 echo 'ok   wasm product reuse validates both input and every saved output'
 
 # Engine type errors must block both lanes without needing wasm or a GPU.
-python3 - "$root/scripts/gate/run.py" <<'PY'
-import runpy
-import sys
-gate = runpy.run_path(sys.argv[1])
-assert 'engine-typecheck' in gate['QUICK']
-assert 'engine-typecheck' in gate['FULL']
-assert gate['NEEDS']['engine-typecheck'] == ('rust-build',)
-assert 'engine-typecheck' in gate['NEEDS']['bun-test']
-assert 'preflight' in gate['NEEDS']['rust-build']
-assert 'api-surface' in gate['NEEDS']['bun-test']
-assert 'web-ready' in gate['NEEDS']['browser']
-assert 'bun-test' not in gate['NEEDS']['browser']
-assert not {'rust-cpu', 'rust-gpu'}.intersection(gate['NEEDS']['bun-test'])
-assert {'bun-test', 'browser', 'fixtures'} <= gate['PROJECT_STEPS']
-PY
+bun - "$root/scripts/gate/run.ts" <<'TS'
+import assert from "node:assert/strict";
+const { QUICK, FULL, NEEDS, PROJECT_STEPS } = await import(process.argv[2]);
+assert(QUICK.includes("engine-typecheck"));
+assert(FULL.includes("engine-typecheck"));
+assert.deepEqual(NEEDS["engine-typecheck"], ["rust-build"]);
+assert(NEEDS["bun-test"].includes("engine-typecheck"));
+assert(NEEDS["rust-build"].includes("preflight"));
+assert(NEEDS["bun-test"].includes("api-surface"));
+assert(NEEDS.browser.includes("web-ready"));
+assert(!NEEDS.browser.includes("bun-test"));
+assert(!["rust-cpu", "rust-gpu"].some(s => NEEDS["bun-test"].includes(s)));
+assert(["bun-test", "browser", "fixtures"].every(s => PROJECT_STEPS.has(s)));
+TS
 if [ "$?" -ne 0 ]; then echo 'FAIL engine typecheck lane coverage'; exit 1; fi
 t="$scratch/typecheck"
 mkdir -p "$t/debug"

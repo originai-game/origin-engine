@@ -21,27 +21,20 @@ clean() {
 # cold run fails landed through the old wider exception). NUL delimiters in
 # the comparison preserve spaces and unusual filenames.
 disjoint() {
-  python3 - "$1" "$2" "$3" <<'PY'
-import subprocess
-import sys
-
-base, head, main = sys.argv[1:]
-def paths(end):
-    return set(subprocess.check_output([
-        'git', 'diff', '--no-renames', '--name-only', '-z', base, end
-    ]).split(b'\0')) - {b''}
-
-def prose(p):
-    if p in (b'AGENTS.md', b'README.md'):
-        return True
-    parts = p.split(b'/')
-    if parts[0] in (b'docs', b'tasks'):
-        return p.endswith(b'.md')
-    return parts[:2] == [b'changelog', b'unreleased']
-
-ours, theirs = paths(head), paths(main)
-sys.exit(0 if all(prose(p) for p in ours | theirs) and ours.isdisjoint(theirs) else 1)
-PY
+  bun - "$1" "$2" "$3" <<'TS'
+import { execFileSync } from "node:child_process";
+const [base, head, main] = process.argv.slice(2);
+// Latin-1 preserves byte identity, including filenames that are not valid UTF-8.
+const paths = end => new Set(execFileSync("git", ["diff", "--no-renames", "--name-only", "-z", base, end]).toString("latin1").split("\0").filter(Boolean));
+const prose = p => {
+  if (["AGENTS.md", "README.md"].includes(p)) return true;
+  const parts = p.split("/");
+  if (["docs", "tasks"].includes(parts[0])) return p.endsWith(".md");
+  return parts[0] === "changelog" && parts[1] === "unreleased";
+};
+const ours = paths(head), theirs = paths(main);
+process.exit([...ours, ...theirs].every(prose) && ![...ours].some(p => theirs.has(p)) ? 0 : 1);
+TS
 }
 
 # The recheck holds the landing queue: scripts/check.sh gives it a lone
@@ -79,7 +72,7 @@ stack() {
   while read -r offer their tree <&3; do
     [ -n "$offer" ] || continue
     git checkout -q --detach "$their"
-    if python3 scripts/rebase-generated.py "${tips[${#theirs[@]}]}" </dev/null && [ -z "$(git status --porcelain)" ]; then
+    if bun scripts/rebase-generated.ts "${tips[${#theirs[@]}]}" </dev/null && [ -z "$(git status --porcelain)" ]; then
       theirs+=("$their") files+=("$offer") tips+=("$(git rev-parse HEAD)")
       echo "land: batching $their ($tree)"
     else
@@ -136,28 +129,28 @@ retip() {
   tips=("${tips[@]:0:n+1}")
   theirs=(${theirs[@]+"${theirs[@]:0:n}"}) files=(${files[@]+"${files[@]:0:n}"})
   git checkout -q --detach "$head"
-  if ! python3 scripts/rebase-generated.py origin/main </dev/null || [ -n "$(git status --porcelain)" ]; then
+  if ! bun scripts/rebase-generated.ts origin/main </dev/null || [ -n "$(git status --porcelain)" ]; then
     git rebase --abort 2>/dev/null || true
     git reset -q --hard
     return 1
   fi
   head="$(git rev-parse HEAD)"
-  mapfile -t tips < <(python3 - "$was" "$head" "${tips[@]}" <<'PY'
-import subprocess
-import sys
-
-was, head, *tips = sys.argv[1:]
-def commits(end):
-    out = subprocess.check_output(['git', 'log', '--reverse', '--format=%H%x00%s', 'origin/main..' + end])
-    return [line.split('\0', 1) for line in out.decode().splitlines()]
-main = subprocess.check_output(['git', 'rev-parse', 'origin/main']).decode().strip()
-new, last, j, at = commits(head), main, 0, {}
-for commit, subject in commits(was):
-    if j < len(new) and new[j][1] == subject:
-        last, j = new[j][0], j + 1
-    at[commit] = last
-print(*[at.get(t, main) for t in tips[:-1]], head, sep='\n')
-PY
+  mapfile -t tips < <(bun - "$was" "$head" "${tips[@]}" <<'TS'
+import { execFileSync } from "node:child_process";
+const [was, head, ...tips] = process.argv.slice(2);
+const git = (...args) => execFileSync("git", args, {encoding:"utf8"}).trim();
+const commits = end => {
+  const out = git("log", "--reverse", "--format=%H%x00%s", "origin/main.." + end);
+  return out ? out.split("\n").map(line => line.split("\0")) : [];
+};
+const main = git("rev-parse", "origin/main"), next = commits(head), at = new Map();
+let last = main, j = 0;
+for (const [commit, subject] of commits(was)) {
+  if (j < next.length && next[j][1] === subject) last = next[j++][0];
+  at.set(commit, last);
+}
+console.log([...tips.slice(0, -1).map(t => at.get(t) ?? main), head].join("\n"));
+TS
 )
   [ "${#tips[@]}" = $((n + 1)) ] || return 1
   # This lander's own branch follows its rebased head, as after the first rebase.
@@ -242,10 +235,10 @@ git symbolic-ref -q HEAD >/dev/null || { echo 'land: use a branch' >&2; exit 1; 
 branch="$(git symbolic-ref --short HEAD)"
 git fetch origin main
 base="$(git rev-parse FETCH_HEAD)"
-python3 scripts/rebase-generated.py "$base"
+bun scripts/rebase-generated.ts "$base"
 head="$(git rev-parse HEAD)"
 if [ "$head" = "$base" ]; then echo "land: already on origin/main ($head)"; exit 0; fi
-# A tree that passed the whole full lane with --all (scripts/gate/run.py's
+# A tree that passed the whole full lane with --all (scripts/gate/run.ts's
 # lane.full record) lands without the opening quick; a later recheck still
 # runs what a rebase onto a moved main changed.
 # Where scripts/lib.sh puts the target directory (land.sh sources only lock.sh).
@@ -280,7 +273,7 @@ if [ "$main" != "$base" ]; then
     echo 'land: origin/main was rewritten; inspect before retrying' >&2; exit 1;
   }
   disjoint "$base" "$head" "$main" || recheck=1
-  python3 scripts/rebase-generated.py "$main"
+  bun scripts/rebase-generated.ts "$main"
   clean
   head="$(git rev-parse HEAD)"
   if [ "$recheck" = 0 ]; then echo 'land: disjoint changes, reusing passing quick gate'; fi

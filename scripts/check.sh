@@ -4,7 +4,7 @@
 set -eu -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT"
-case "${1:-}" in --help|-h|--list) exec python3 scripts/gate/run.py "$@" ;; esac
+case "${1:-}" in --help|-h|--list) exec bun scripts/gate/run.ts "$@" ;; esac
 
 og_temp_prepare "$OG_ROOT"
 # Admission is shared, not a machine-wide work lock. Only this checkout's
@@ -42,7 +42,7 @@ export CARGO_BUILD_JOBS="$OG_GATE_THREADS"
 export NEXTEST_TEST_THREADS="$OG_GATE_THREADS"
 export RUST_TEST_THREADS="$OG_GATE_THREADS"
 export RAYON_NUM_THREADS="$OG_GATE_THREADS"
-python3 scripts/gate/run.py "$@" &
+bun scripts/gate/run.ts "$@" &
 runner=$!
 # Keep admission and target ownership until the scheduler drains its children.
 stop() { kill -TERM "$runner" 2>/dev/null || true; wait "$runner" || true; exit "$1"; }

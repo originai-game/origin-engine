@@ -180,7 +180,7 @@ step_wasm_check() {
   # never see them (og-tests-web once stopped compiling for weeks while
   # quick passed) — so this step reruns only when a crate in the closure
   # changed.
-  skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web og-host-web og-render)" && return $SKIP
+  skip_unchanged wasm-check "wasm-check" "$(bun scripts/gate/inputs.ts crates og-tests-web og-host-web og-render)" && return $SKIP
   export RUSTC_WRAPPER=
   local profile="${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}"
   # Preserve the removed nested test's standalone default-feature dev graph.
@@ -286,7 +286,7 @@ wasm_product() {
   local kind="$1" variant="$2" source="$3" out="$4" start="$SECONDS" rc
   shift 4
   if [ "${OG_WASM_PRODUCT_CACHE:-0}" = 1 ] && [ -n "${GATE_LOGS:-}" ] && [ "${OG_GATE:-}" = 1 ]; then
-    python3 "$OG_ROOT/scripts/gate/wasm-products.py" "$kind" "$variant" "$source" "$out" "$@"; rc=$?
+    bun "$OG_ROOT/scripts/gate/wasm-products.ts" "$kind" "$variant" "$source" "$out" "$@"; rc=$?
   else
     "$@"; rc=$?
   fi
@@ -491,17 +491,17 @@ require_web_ready() {
 }
 
 continuation_key() {
-  [ "${FORCE_ALL:-0}" = 1 ] && python3 scripts/gate/continuation.py key "$1"
+  [ "${FORCE_ALL:-0}" = 1 ] && bun scripts/gate/continuation.ts key "$1"
 }
 
 step_bun_test() {
   require_web_ready bun-test || return 1
   local key rc
   key="$(continuation_key bun-test)" || key=""
-  if [ -n "$key" ] && python3 scripts/gate/continuation.py reuse bun-test suite "$key"; then return 4; fi
+  if [ -n "$key" ] && bun scripts/gate/continuation.ts reuse bun-test suite "$key"; then return 4; fi
   bun scripts/gate/bun.ts full; rc=$?
   if [ "$rc" = 0 ] && [ -n "$key" ]; then
-    python3 scripts/gate/continuation.py pass bun-test suite "$key" || og_err 'bun-test: could not write continuation receipt'
+    bun scripts/gate/continuation.ts pass bun-test suite "$key" || og_err 'bun-test: could not write continuation receipt'
   fi
   return "$rc"
 }
@@ -784,7 +784,7 @@ step_web_reference() {
 # give the web target the bits recorded natively (docs/ci.md §Lanes).
 # wasmtime comes from scripts/install-tools.sh.
 step_shape_wasm32() {
-  skip_unchanged shape-wasm32 "shape-wasm32" "$(python3 scripts/gate/inputs.py crates og-shape)" && return $SKIP
+  skip_unchanged shape-wasm32 "shape-wasm32" "$(bun scripts/gate/inputs.ts crates og-shape)" && return $SKIP
   command -v wasmtime >/dev/null || { og_err "shape-wasm32: no wasmtime; run scripts/install-tools.sh"; return 1; }
   export RUSTC_WRAPPER=
   CARGO_TARGET_WASM32_WASIP1_RUNNER=wasmtime \

@@ -6,14 +6,12 @@
 OG_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OG_TARGET_DIR="${CARGO_TARGET_DIR:-$OG_ROOT/target}"
 # Absolute is `/...`, or `C:/...` under Git Bash when a Windows parent (the
-# gate's Python) hands bash its PWD in Windows form.
+# gate's Bun process) hands bash its PWD in Windows form.
 case "$OG_TARGET_DIR" in /*|[A-Za-z]:[/\\]*) ;; *) OG_TARGET_DIR="$OG_ROOT/$OG_TARGET_DIR" ;; esac
 # Test harnesses (gfx diffs, perf reports) write here; CI uploads it on failure.
 export OG_EVIDENCE_DIR="${OG_EVIDENCE_DIR:-$OG_TARGET_DIR/evidence}"
 export OG_WASM_OUT="$OG_TARGET_DIR/og-wasm"
-# The gate's Python reads cargo's and git's UTF-8 as UTF-8 under any locale
-# (studio-win's is GBK); a UTF-8 locale (macOS, Linux) already does.
-export PYTHONUTF8=1
+# Bun reads Cargo's and Git's output as UTF-8 under any locale.
 # shellcheck source=lock.sh
 . "$OG_ROOT/scripts/lock.sh"
 

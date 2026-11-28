@@ -315,7 +315,7 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
 /// Reports a frame that moved from its reference without failing the test:
 /// frames are judged on what they show, never on their difference
 /// (AGENTS.md §Principles). Prints `REFERENCE MISMATCH <what>`, and under
-/// the gate (`OG_REFERENCE_REPORT_DIR`, scripts/gate/native.py) appends it
+/// the gate (`OG_REFERENCE_REPORT_DIR`, scripts/gate/native.ts) appends it
 /// to a file there, which the gate prints after the run (nextest keeps a
 /// passing test's output to itself).
 pub fn report_mismatch(what: &str) {

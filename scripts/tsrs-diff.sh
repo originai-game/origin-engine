@@ -92,45 +92,42 @@ for c in "${configs[@]}"; do
     cat "$tmp/tsgo.txt" "$tmp/tsgo.err" "$tmp/tsrs.txt" "$tmp/tsrs.err" >&2
     fail=1; continue
   fi
-  python3 -I - "$name" "$tmp/tsgo.txt" "$tmp/tsrs.txt" <<'PY' || fail=1
-import re, sys
-name, go_path, rs_path = sys.argv[1:4]
-# `<file>(<line>,<col>): error TS<code>: <message>`, `error TS<code>: <message>`,
-# and indented continuation lines that belong to the diagnostic above.
-head = re.compile(r"^(?:(.+)\((\d+),(\d+)\): )?(?:error|warning|message) TS(\d+): (.*)$")
-def parse(path):
-    out, last = {}, None
-    for line in open(path, encoding="utf-8", errors="replace"):
-        line = line.rstrip("\n")
-        if not line:
-            continue
-        m = head.match(line)
-        if m and not line.startswith(" "):
-            key = (m[1] or "", int(m[2] or 0), int(m[3] or 0), int(m[4]))
-            out.setdefault(key, []).append(m[5])
-            last = key
-        elif last is not None:
-            out[last][-1] += "\n" + line.strip()
-    return out
-go, rs = parse(go_path), parse(rs_path)
-missed = sorted(k for k in go if k not in rs)
-extra = sorted(k for k in rs if k not in go)
-differ = sorted(k for k in go if k in rs and go[k] != rs[k])
-fmt = lambda k: f"{k[0] or '<global>'}({k[1]},{k[2]}) TS{k[3]}"
-for k in extra:
-    print(f"diff {name}: tsrs only: {fmt(k)}: {rs[k][0]}")
-for k in differ:
-    print(f"diff {name}: message differs at {fmt(k)}:\n  tsgo: {go[k][0]}\n  tsrs: {rs[k][0]}")
-for k in missed:
-    print(f"MISS {name}: {fmt(k)}: {go[k][0]}", file=sys.stderr)
-total = sum(len(v) for v in go.values())
-if not go and not rs:
-    print(f"ok   {name}: both clean")
-else:
-    print(f"{'FAIL' if missed else 'ok  '} {name}: tsgo {total} diagnostic(s); tsrs missed {len(missed)}, "
-          f"reported {len(extra)} more, {len(differ)} with another message")
-sys.exit(1 if missed else 0)
-PY
+  bun - "$name" "$tmp/tsgo.txt" "$tmp/tsrs.txt" <<'TS' || fail=1
+import { readFileSync } from "node:fs";
+const [name, goPath, rsPath] = process.argv.slice(2);
+// File-position and global diagnostics, followed by indented continuation lines.
+const head = /^(?:(.+)\((\d+),(\d+)\): )?(?:error|warning|message) TS(\d+): (.*)$/;
+function parse(path) {
+  const out = new Map(); let last;
+  for (const line of readFileSync(path,"utf8").split(/\r?\n/)) {
+    if (!line) continue;
+    const m = line.match(head);
+    if (m && !line.startsWith(" ")) {
+      const key = JSON.stringify([m[1]||"", Number(m[2]||0), Number(m[3]||0), Number(m[4])]);
+      if (!out.has(key)) out.set(key, []);
+      out.get(key).push(m[5]); last=key;
+    } else if (last!==undefined) {
+      const messages=out.get(last); messages[messages.length-1]+="\n"+line.trim();
+    }
+  }
+  return out;
+}
+const sort = keys => keys.sort((a,b) => {
+  const x=JSON.parse(a), y=JSON.parse(b);
+  return (x[0]<y[0] ? -1 : x[0]>y[0] ? 1 : 0) || x[1]-y[1] || x[2]-y[2] || x[3]-y[3];
+});
+const go=parse(goPath), rs=parse(rsPath);
+const missed=sort([...go.keys()].filter(k=>!rs.has(k))), extra=sort([...rs.keys()].filter(k=>!go.has(k)));
+const differ=sort([...go.keys()].filter(k=>rs.has(k)&&JSON.stringify(go.get(k))!==JSON.stringify(rs.get(k))));
+const fmt = key => {const k=JSON.parse(key); return `${k[0]||"<global>"}(${k[1]},${k[2]}) TS${k[3]}`;};
+for(const k of extra) console.log(`diff ${name}: tsrs only: ${fmt(k)}: ${rs.get(k)[0]}`);
+for(const k of differ) console.log(`diff ${name}: message differs at ${fmt(k)}:\n  tsgo: ${go.get(k)[0]}\n  tsrs: ${rs.get(k)[0]}`);
+for(const k of missed) console.error(`MISS ${name}: ${fmt(k)}: ${go.get(k)[0]}`);
+const total=[...go.values()].reduce((n,v)=>n+v.length,0);
+if(!go.size&&!rs.size) console.log(`ok   ${name}: both clean`);
+else console.log(`${missed.length ? "FAIL" : "ok  "} ${name}: tsgo ${total} diagnostic(s); tsrs missed ${missed.length}, reported ${extra.length} more, ${differ.length} with another message`);
+process.exit(missed.length ? 1 : 0);
+TS
 done
 
 if [ "$fail" = 0 ]; then og_say "PASS check-conformance (tsrs $TSRS_VERSION against $against)"; exit 0; fi
